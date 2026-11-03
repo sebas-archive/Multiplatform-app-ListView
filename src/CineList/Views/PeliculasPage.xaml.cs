@@ -21,6 +21,8 @@ public partial class PeliculasPage : ContentPage
         BotonTema.Text = IconoTema();
     }
 
+    private bool _fabAnimado;
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
@@ -30,7 +32,15 @@ public partial class PeliculasPage : ContentPage
             // El "+" quedó girado 90° al abrir el formulario: con la sombra de Android, la rotación
             // desplaza el botón; se vuelve a 0 (el glifo se ve igual)
             BotonAgregar.Rotation = 0;
-            await Animaciones.AparecerEscala(BotonAgregar);
+            // La animación de entrada solo corre la primera vez: al volver de segundo plano Android
+            // pausa los animadores y el botón podía quedar a medio escalar
+            if (_fabAnimado) BotonAgregar.Scale = BotonAgregar.Opacity = 1;
+            else
+            {
+                _fabAnimado = true;
+                await Animaciones.AparecerEscala(BotonAgregar);
+                BotonAgregar.Scale = BotonAgregar.Opacity = 1;
+            }
         }
         catch (Exception ex)
         {
