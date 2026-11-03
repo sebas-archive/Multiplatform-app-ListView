@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CineList.Core", "src\CineLi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CineList.Core.Tests", "tests\CineList.Core.Tests\CineList.Core.Tests.csproj", "{62525100-DA4B-418E-99A0-B4F51B5B11BC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CineList", "src\CineList\CineList.csproj", "{E7D44103-1018-46DA-AB0F-44F3900DB310}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,6 +45,18 @@ Global
 		{62525100-DA4B-418E-99A0-B4F51B5B11BC}.Release|x64.Build.0 = Release|Any CPU
 		{62525100-DA4B-418E-99A0-B4F51B5B11BC}.Release|x86.ActiveCfg = Release|Any CPU
 		{62525100-DA4B-418E-99A0-B4F51B5B11BC}.Release|x86.Build.0 = Release|Any CPU
+		{E7D44103-1018-46DA-AB0F-44F3900DB310}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E7D44103-1018-46DA-AB0F-44F3900DB310}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E7D44103-1018-46DA-AB0F-44F3900DB310}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E7D44103-1018-46DA-AB0F-44F3900DB310}.Debug|x64.Build.0 = Debug|Any CPU
+		{E7D44103-1018-46DA-AB0F-44F3900DB310}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E7D44103-1018-46DA-AB0F-44F3900DB310}.Debug|x86.Build.0 = Debug|Any CPU
+		{E7D44103-1018-46DA-AB0F-44F3900DB310}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E7D44103-1018-46DA-AB0F-44F3900DB310}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E7D44103-1018-46DA-AB0F-44F3900DB310}.Release|x64.ActiveCfg = Release|Any CPU
+		{E7D44103-1018-46DA-AB0F-44F3900DB310}.Release|x64.Build.0 = Release|Any CPU
+		{E7D44103-1018-46DA-AB0F-44F3900DB310}.Release|x86.ActiveCfg = Release|Any CPU
+		{E7D44103-1018-46DA-AB0F-44F3900DB310}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -50,5 +64,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{EF23B648-31C5-410B-B39A-FCFB76449446} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{62525100-DA4B-418E-99A0-B4F51B5B11BC} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{E7D44103-1018-46DA-AB0F-44F3900DB310} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal
