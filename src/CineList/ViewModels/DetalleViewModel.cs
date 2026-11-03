@@ -165,7 +165,7 @@ public partial class DetalleViewModel(PeliculasViewModel lista, IPeliculasReposi
     private static async Task AvisarAsync(Exception ex)
     {
         Debug.WriteLine($"[DetalleViewModel] {ex}");
-        var mensaje = ex is RepositorioException ? ex.Message : "No se pudo completar la acción";
+        var mensaje = MensajesError.Para(ex, "No se pudo completar la acción");
         try
         {
             if (Shell.Current is { } shell) await shell.DisplayAlert("Error", mensaje, "Aceptar");

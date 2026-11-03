@@ -200,7 +200,7 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
         {
             // Falló el refresco con la lista ya cargada: se conserva y se avisa sin bloquear
             Debug.WriteLine($"[PeliculasViewModel] {ex}");
-            MostrarAviso(ex is RepositorioException ? ex.Message : "No se pudo actualizar la lista");
+            MostrarAviso(MensajesError.Para(ex, "No se pudo actualizar la lista"));
         }
         catch (Exception ex)
         {
@@ -285,8 +285,9 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
         Debug.WriteLine($"[PeliculasViewModel] {ex}");
         if (ex is RepositorioException repo)
         {
-            Error = repo.Message;
-            IconoError = repo.SinConexion ? Iconos.SinConexion : Iconos.Pelicula;
+            Error = MensajesError.Para(repo, repo.Message);
+            // El ícono de "sin red" solo si de verdad el dispositivo está sin conexión
+            IconoError = repo.SinConexion && Error != MensajesError.SinServidor ? Iconos.SinConexion : Iconos.Pelicula;
         }
         else
         {
@@ -299,7 +300,7 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
     private static Task AvisarAsync(Exception ex)
     {
         Debug.WriteLine($"[PeliculasViewModel] {ex}");
-        var mensaje = ex is RepositorioException ? ex.Message : "No se pudo completar la operación";
+        var mensaje = MensajesError.Para(ex, "No se pudo completar la operación");
         return Shell.Current?.DisplayAlert("CineList", mensaje, "Aceptar") ?? Task.CompletedTask;
     }
 }

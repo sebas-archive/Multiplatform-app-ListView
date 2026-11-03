@@ -26,7 +26,15 @@ public static class MauiProgram
 				fonts.AddFont("MaterialSymbolsRoundedFill.ttf", "IconosRellenos");
 			});
 
-		builder.Services.AddSingleton(new HttpClient { Timeout = TimeSpan.FromSeconds(20) });
+		// Las conexiones reutilizadas se renuevan: tras un rato sin uso (p. ej. con la cámara o el selector
+		// de fotos abiertos) el servidor o la red las cierran y la siguiente petición fallaría con "Socket closed"
+		builder.Services.AddSingleton(new HttpClient(new SocketsHttpHandler
+		{
+			PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+			PooledConnectionIdleTimeout = TimeSpan.FromSeconds(30),
+			ConnectTimeout = TimeSpan.FromSeconds(10),
+		})
+		{ Timeout = TimeSpan.FromSeconds(20) });
 		builder.Services.AddSingleton<IPeliculasRepository>(sp => new PeliculasRepository(sp.GetRequiredService<HttpClient>()));
 		builder.Services.AddSingleton<TemaService>();
 		builder.Services.AddSingleton<PeliculasViewModel>();

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using CineList.Core.Firestore;
 using CineList.Core.Formulario;
 using CineList.Core.Models;
+using CineList.Helpers;
 using CineList.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -180,21 +181,27 @@ public partial class FormularioViewModel(
             {
                 var editada = datos.CrearPelicula(_original);
                 await repositorio.ActualizarAsync(editada);
+                ImagenPoster.Invalidar(editada.Id); // antes de Upsert: la celda no debe pintar el póster viejo
                 lista.Upsert(editada);
-                ImagenPoster.Invalidar(editada.Id);
+                _original = editada;
             }
             else
             {
                 var creada = await repositorio.CrearAsync(datos.CrearPelicula());
+                ImagenPoster.Invalidar(creada.Id);
                 lista.Upsert(creada);
+                // Ya existe en Firestore: si cerrar el formulario falla, otro "Guardar" debe actualizar, no duplicar
+                _original = creada;
+                EsEdicion = true;
             }
+            _inicial = datos;
         }
         catch (Exception ex)
         {
             // Sin red o Firestore caído: se avisa y el formulario conserva lo escrito
             Debug.WriteLine($"[FormularioViewModel] {ex}");
             await AlertaAsync("No se pudo guardar",
-                ex is RepositorioException ? ex.Message : "No se pudo guardar la película");
+                MensajesError.Para(ex, "No se pudo guardar la película"));
             Guardando = false;
             return;
         }

@@ -222,4 +222,119 @@ public class PeliculasRepositoryTests
         Assert.All(l, p => Assert.Null(p.PosterBase64));
         Assert.Equal(6, l.Select(p => p.CreadaEn).Distinct().Count());
     }
+    // --- Reintento único ante fallo de conexión (conexión reutilizada ya cerrada, etc.) ---
+
+    // Lanza las excepciones dadas en orden y luego responde con el generador; cuenta las peticiones
+    private class HandlerSecuencia(Func<HttpRequestMessage, HttpResponseMessage> responder, params Exception[] fallos)
+        : HttpMessageHandler
+    {
+        private int _llamadas;
+        public int Llamadas => _llamadas;
+        public List<string?> Cuerpos { get; } = new();
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var n = Interlocked.Increment(ref _llamadas);
+            Cuerpos.Add(request.Content is null ? null : await request.Content.ReadAsStringAsync(ct));
+            if (n <= fallos.Length) throw fallos[n - 1];
+            return responder(request);
+        }
+    }
+
+    private static (PeliculasRepository repo, HandlerSecuencia h) ConFallos(
+        Func<HttpRequestMessage, HttpResponseMessage> responder, params Exception[] fallos)
+    {
+        var h = new HandlerSecuencia(responder, fallos);
+        return (new PeliculasRepository(new HttpClient(h), TimeSpan.Zero), h);
+    }
+
+    [Fact]
+    public async Task Listar_FalloDeConexionUnaVez_ReintentaYFunciona()
+    {
+        var (repo, h) = ConFallos(_ => Json("{\"documents\":[" + Doc("a1", "Coco") + "]}"),
+            new HttpRequestException("Socket closed"));
+        var lista = await repo.ListarAsync();
+        Assert.Single(lista);
+        Assert.Equal(2, h.Llamadas);
+    }
+
+    [Theory]
+    [InlineData("http")]
+    [InlineData("web")]
+    [InlineData("io")]
+    public async Task Actualizar_FalloDeConexionUnaVez_ReintentaConElMismoCuerpo(string tipo)
+    {
+        Exception fallo = tipo switch
+        {
+            "http" => new HttpRequestException("Socket closed"),
+            "web" => new WebException("Socket closed"),
+            _ => new IOException("Connection reset"),
+        };
+        var (repo, h) = ConFallos(_ => Json("{}"), fallo);
+        await repo.ActualizarAsync(new Pelicula { Id = "a1", Titulo = "Coco" });
+        Assert.Equal(2, h.Llamadas);
+        Assert.Equal(h.Cuerpos[0], h.Cuerpos[1]);
+        Assert.Contains("Coco", h.Cuerpos[1]);
+    }
+
+    [Fact]
+    public async Task Eliminar_FalloDeConexionUnaVez_Reintenta()
+    {
+        var (repo, h) = ConFallos(_ => new HttpResponseMessage(HttpStatusCode.OK), new IOException("reset"));
+        await repo.EliminarAsync("a1");
+        Assert.Equal(2, h.Llamadas);
+    }
+
+    [Fact]
+    public async Task Crear_FalloDeConexion_NoReintenta()
+    {
+        var (repo, h) = ConFallos(_ => Json(Doc("nuevo", "X")), new HttpRequestException("Socket closed"));
+        var ex = await Assert.ThrowsAsync<RepositorioException>(() => repo.CrearAsync(new Pelicula { Titulo = "X" }));
+        Assert.True(ex.SinConexion);
+        Assert.Equal(1, h.Llamadas);
+    }
+
+    [Fact]
+    public async Task Actualizar_DosFallosDeConexion_LanzaSinConexion()
+    {
+        var segundo = new HttpRequestException("sigue sin red");
+        var (repo, h) = ConFallos(_ => Json("{}"), new HttpRequestException("sin red"), segundo);
+        var ex = await Assert.ThrowsAsync<RepositorioException>(
+            () => repo.ActualizarAsync(new Pelicula { Id = "a1", Titulo = "Coco" }));
+        Assert.True(ex.SinConexion);
+        Assert.Equal("Sin conexión a internet", ex.Message);
+        Assert.Same(segundo, ex.InnerException);
+        Assert.Equal(2, h.Llamadas);
+    }
+
+    [Fact]
+    public async Task ErrorHttp_NoSeReintenta()
+    {
+        var (repo, h) = ConFallos(_ => Json("{}", HttpStatusCode.ServiceUnavailable));
+        var ex = await Assert.ThrowsAsync<RepositorioException>(() => repo.ListarAsync());
+        Assert.False(ex.SinConexion);
+        Assert.Equal(1, h.Llamadas);
+    }
+
+    [Fact]
+    public async Task Timeout_NoSeReintenta()
+    {
+        var (repo, h) = ConFallos(_ => Json("{}"), new TaskCanceledException("timeout"));
+        var ex = await Assert.ThrowsAsync<RepositorioException>(() => repo.ListarAsync());
+        Assert.True(ex.SinConexion);
+        Assert.Equal(1, h.Llamadas);
+    }
+
+    [Fact]
+    public async Task CancelacionDelLlamador_NoSeReintenta()
+    {
+        using var cts = new CancellationTokenSource();
+        var (repo, h) = ConFallos(_ =>
+        {
+            cts.Cancel();
+            throw new HttpRequestException("cortado al cancelar");
+        });
+        await Assert.ThrowsAnyAsync<Exception>(() => repo.ListarAsync(cts.Token));
+        Assert.Equal(1, h.Llamadas);
+    }
 }

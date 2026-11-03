@@ -15,8 +15,11 @@ public interface IPeliculasRepository
     Task CargarEjemplosAsync(CancellationToken ct = default);
 }
 
-public class PeliculasRepository(HttpClient http) : IPeliculasRepository
+/// <param name="pausaReintento">Espera antes del único reintento (por defecto 300 ms; las pruebas usan cero).</param>
+public class PeliculasRepository(HttpClient http, TimeSpan? pausaReintento = null) : IPeliculasRepository
 {
+    private readonly TimeSpan _pausaReintento = pausaReintento ?? TimeSpan.FromMilliseconds(300);
+
     private const string Base =
         "https://firestore.googleapis.com/v1/projects/" + FirebaseConfig.ProjectId + "/databases/(default)/documents";
     private static readonly string Coleccion = $"{Base}/{FirebaseConfig.Coleccion}";
@@ -31,7 +34,7 @@ public class PeliculasRepository(HttpClient http) : IPeliculasRepository
             var url = $"{Coleccion}?pageSize=300" +
                       (token is null ? "" : "&pageToken=" + Uri.EscapeDataString(token)) +
                       "&" + Key;
-            var json = await EnviarAsync(HttpMethod.Get, url, null, ct);
+            var json = await EnviarAsync(HttpMethod.Get, url, null, ct, reintentar: true);
             if (json?["documents"] is JsonArray docs)
                 foreach (var d in docs)
                     if (d is JsonObject o)
@@ -58,7 +61,8 @@ public class PeliculasRepository(HttpClient http) : IPeliculasRepository
         if (string.IsNullOrWhiteSpace(p.Id))
             throw new ArgumentException("La película no tiene Id.", nameof(p));
         var cuerpo = new JsonObject { ["fields"] = FirestoreMapper.ACampos(p) };
-        await EnviarAsync(HttpMethod.Patch, $"{Coleccion}/{Uri.EscapeDataString(p.Id)}?{Key}", cuerpo, ct);
+        await EnviarAsync(HttpMethod.Patch, $"{Coleccion}/{Uri.EscapeDataString(p.Id)}?{Key}", cuerpo, ct,
+            reintentar: true);
     }
 
     public async Task EliminarAsync(string id, CancellationToken ct = default)
@@ -66,7 +70,7 @@ public class PeliculasRepository(HttpClient http) : IPeliculasRepository
         if (string.IsNullOrWhiteSpace(id))
             throw new ArgumentException("Id vacío.", nameof(id));
         await EnviarAsync(HttpMethod.Delete, $"{Coleccion}/{Uri.EscapeDataString(id)}?{Key}", null, ct,
-            ignorar404: true);
+            reintentar: true, ignorar404: true);
     }
 
     public async Task CargarEjemplosAsync(CancellationToken ct = default)
@@ -75,11 +79,33 @@ public class PeliculasRepository(HttpClient http) : IPeliculasRepository
             await CrearAsync(ejemplo, ct);
     }
 
+    // GET, PATCH y DELETE son idempotentes: ante un fallo de conexión (p. ej. una conexión reutilizada
+    // que el servidor ya cerró) se reintentan UNA vez. POST (crear) nunca se reintenta: podría duplicar.
+    // No se reintenta ante errores HTTP (el servidor respondió), ni timeouts, ni cancelación del llamador.
     private async Task<JsonObject?> EnviarAsync(HttpMethod metodo, string url, JsonObject? cuerpo,
-        CancellationToken ct, bool ignorar404 = false)
+        CancellationToken ct, bool reintentar = false, bool ignorar404 = false)
+    {
+        for (var intento = 1; ; intento++)
+        {
+            try
+            {
+                return await EnviarUnaVezAsync(metodo, url, cuerpo, ct, ignorar404);
+            }
+            catch (Exception ex) when (EsFalloDeConexion(ex))
+            {
+                if (!reintentar || intento >= 2 || ct.IsCancellationRequested)
+                    throw new RepositorioException("Sin conexión a internet", true, ex);
+            }
+            await Task.Delay(_pausaReintento, ct);
+        }
+    }
+
+    private async Task<JsonObject?> EnviarUnaVezAsync(HttpMethod metodo, string url, JsonObject? cuerpo,
+        CancellationToken ct, bool ignorar404)
     {
         try
         {
+            // Cada intento crea su propia petición: un HttpRequestMessage no se puede reenviar
             using var req = new HttpRequestMessage(metodo, url);
             if (cuerpo is not null)
                 req.Content = new StringContent(cuerpo.ToJsonString(), Encoding.UTF8, "application/json");
@@ -94,11 +120,13 @@ public class PeliculasRepository(HttpClient http) : IPeliculasRepository
             var texto = await resp.Content.ReadAsStringAsync(ct);
             return string.IsNullOrWhiteSpace(texto) ? null : JsonNode.Parse(texto) as JsonObject;
         }
-        // En Android el handler nativo informa la falta de red como WebException o IOException
-        catch (Exception ex) when (ex is HttpRequestException or WebException or IOException ||
-                                   (ex is TaskCanceledException && !ct.IsCancellationRequested))
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
         {
+            // Timeout de HttpClient: no se reintenta (duplicaría la espera)
             throw new RepositorioException("Sin conexión a internet", true, ex);
         }
     }
+
+    // En Android el handler nativo informa la falta de red como WebException o IOException
+    private static bool EsFalloDeConexion(Exception ex) => ex is HttpRequestException or WebException or IOException;
 }
