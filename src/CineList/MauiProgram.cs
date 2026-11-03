@@ -31,6 +31,8 @@ public static class MauiProgram
 		builder.Services.AddSingleton<TemaService>();
 		builder.Services.AddSingleton<PeliculasViewModel>();
 		builder.Services.AddTransient<PeliculasPage>();
+		builder.Services.AddTransient<DetalleViewModel>();
+		builder.Services.AddTransient<DetallePage>();
 
 #if ANDROID
 		// SearchBar sin la línea inferior nativa y con la lupa en el color de texto secundario

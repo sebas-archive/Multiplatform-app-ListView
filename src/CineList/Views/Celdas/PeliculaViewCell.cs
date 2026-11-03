@@ -118,19 +118,14 @@ public class PeliculaViewCell : ViewCell
         if (Pelicula is not { } p) return;
         _poster.Pelicula = p; // el póster se repinta solo si cambia la película
         _titulo.Text = p.Titulo;
-        _datos.Text = string.Join(" · ", new[]
-        {
-            p.Director.Trim(),
-            p.Anio > 0 ? p.Anio.ToString() : "",
-            p.DuracionMin > 0 ? $"{p.DuracionMin} min" : "",
-        }.Where(parte => parte.Length > 0));
+        _datos.Text = TextoPelicula.Meta(p);
         _estrellas.Valor = p.Calificacion;
         MostrarEstado(p.Vista);
     }
 
     private void MostrarEstado(bool vista)
     {
-        _textoEtiqueta.Text = vista ? "VISTA" : "PENDIENTE";
+        _textoEtiqueta.Text = TextoPelicula.Etiqueta(vista);
         _textoEtiqueta.SetAppThemeColor(Label.TextColorProperty,
             Recurso(vista ? "VistaTextoClaro" : "PendienteTextoClaro"),
             Recurso(vista ? "VistaTextoOscuro" : "PendienteTextoOscuro"));

@@ -8,7 +8,7 @@
     Shell.FlyoutBehavior="Disabled"
     Title="CineList">
 
-    <!-- Las rutas "detalle" y "formulario" se registran en AppShell.xaml.cs cuando existan sus páginas -->
+    <!-- Las rutas "detalle" y "formulario" se registran en AppShell.xaml.cs -->
     <ShellContent
         Title="Películas"
         ContentTemplate="{DataTemplate views:PeliculasPage}"
