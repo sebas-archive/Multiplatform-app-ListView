@@ -58,14 +58,17 @@ public partial class DetalleViewModel(PeliculasViewModel lista, IPeliculasReposi
             _saliendo = true;
             try
             {
-                if (Shell.Current is { } shell)
+                if (Shell.Current is not { } shell)
                 {
-                    await shell.DisplayAlert("Película no encontrada", "Esta película ya no existe", "Aceptar");
-                    await shell.GoToAsync("..");
+                    _saliendo = false;
+                    return false;
                 }
+                await shell.DisplayAlert("Película no encontrada", "Esta película ya no existe", "Aceptar");
+                await shell.GoToAsync("..");
             }
             catch (Exception ex)
             {
+                _saliendo = false;
                 Debug.WriteLine($"[DetalleViewModel] {ex}");
             }
             return false;
@@ -128,13 +131,14 @@ public partial class DetalleViewModel(PeliculasViewModel lista, IPeliculasReposi
                 "Eliminar película", $"¿Eliminar \"{pelicula.Titulo}\"?", "Eliminar", "Cancelar");
             if (!confirmar) return;
             await repositorio.EliminarAsync(pelicula.Id);
-            _saliendo = true;
             ImagenPoster.Invalidar(pelicula.Id);
             lista.Quitar(pelicula.Id);
+            _saliendo = true;
             await Shell.Current.GoToAsync("..");
         }
         catch (Exception ex)
         {
+            _saliendo = false;
             await AvisarAsync(ex);
         }
         finally
@@ -146,12 +150,15 @@ public partial class DetalleViewModel(PeliculasViewModel lista, IPeliculasReposi
     [RelayCommand]
     private async Task VolverAsync()
     {
+        if (_saliendo) return; // evita un segundo "atrás" encolado por doble toque
+        _saliendo = true;
         try
         {
             await Shell.Current.GoToAsync("..");
         }
         catch (Exception ex)
         {
+            _saliendo = false;
             Debug.WriteLine($"[DetalleViewModel] {ex.Message}");
         }
     }

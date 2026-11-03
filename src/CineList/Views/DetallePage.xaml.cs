@@ -24,7 +24,11 @@ public partial class DetallePage : ContentPage
         base.OnAppearing();
         try
         {
-            if (!await _vm.RefrescarAsync()) return;
+            if (!await _vm.RefrescarAsync())
+            {
+                _animada = true; // si no se pudo salir, el contenido no queda invisible
+                return;
+            }
             PintarEtiqueta(_vm.Pelicula?.Vista ?? false);
             if (_animada) return; // al volver del formulario no se repite la entrada
             _animada = true;
