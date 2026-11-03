@@ -19,15 +19,23 @@ public static class FiltroPeliculas
 
     private const CompareOptions Opciones = CompareOptions.IgnoreNonSpace | CompareOptions.IgnoreCase;
 
+    private const string Acentuadas = "àáâãäåçèéêëìíîïñòóôõöùúûüýÿ";
+    private const string Base        = "aaaaaaceeeeiiiinooooouuuuyy";
+
     /// <summary>Quita tildes y pasa a minúsculas.</summary>
     private static string Normalizar(string? texto)
     {
         if (string.IsNullOrEmpty(texto)) return "";
         var sb = new StringBuilder(texto.Length);
         foreach (var c in texto.Normalize(NormalizationForm.FormD))
-            if (CharUnicodeInfo.GetUnicodeCategory(c) != UnicodeCategory.NonSpacingMark)
-                sb.Append(c);
-        return sb.ToString().Normalize(NormalizationForm.FormC).ToLowerInvariant();
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(c) == UnicodeCategory.NonSpacingMark) continue;
+            var minuscula = char.ToLowerInvariant(c);
+            // Respaldo para entornos sin datos ICU, donde Normalize no descompone.
+            var i = Acentuadas.IndexOf(minuscula);
+            sb.Append(i >= 0 ? Base[i] : minuscula);
+        }
+        return sb.ToString();
     }
 
     // Con datos de cultura (ICU) ignora tildes y mayúsculas; en modo invariante
