@@ -150,6 +150,21 @@ public class PeliculasRepositoryTests
         Assert.Same(inner, ex.InnerException);
     }
 
+    // En Android el handler nativo lanza WebException/IOException en vez de HttpRequestException
+    [Theory]
+    [InlineData("web")]
+    [InlineData("io")]
+    public async Task SinInternetEnAndroid_LanzaRepositorioExceptionSinConexion(string tipo)
+    {
+        Exception inner = tipo == "web"
+            ? new System.Net.WebException("Unable to resolve host")
+            : new System.IO.IOException("Connection reset");
+        var repo = new PeliculasRepository(new HttpClient(new HandlerQueLanza(inner)));
+        var ex = await Assert.ThrowsAsync<RepositorioException>(() => repo.ListarAsync());
+        Assert.True(ex.SinConexion);
+        Assert.Same(inner, ex.InnerException);
+    }
+
     [Fact]
     public async Task Timeout_LanzaRepositorioExceptionSinConexion()
     {

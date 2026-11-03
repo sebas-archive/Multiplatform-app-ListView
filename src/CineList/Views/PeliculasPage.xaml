@@ -3,34 +3,186 @@
     x:Class="CineList.Views.PeliculasPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    Title="CineList">
+    xmlns:vm="clr-namespace:CineList.ViewModels"
+    xmlns:lista="clr-namespace:CineList.Core.Lista;assembly=CineList.Core"
+    xmlns:celdas="clr-namespace:CineList.Views.Celdas"
+    xmlns:controles="clr-namespace:CineList.Controls"
+    xmlns:helpers="clr-namespace:CineList.Helpers"
+    x:DataType="vm:PeliculasViewModel"
+    Shell.NavBarIsVisible="False"
+    Title="Películas">
 
-    <!-- Pagina provisional: la Tarea 6 reemplaza su contenido con la lista -->
-    <Grid x:Name="Contenido" Padding="20,48,20,20" RowDefinitions="Auto,*">
-        <Grid ColumnDefinitions="*,Auto">
+    <Grid x:Name="Contenido" RowDefinitions="Auto,Auto,Auto,*">
+
+        <!-- Encabezado: título y botón de modo claro/oscuro -->
+        <Grid Padding="20,16,20,8" ColumnDefinitions="*,Auto">
             <Label Text="CineList" Style="{StaticResource TituloGrande}" VerticalOptions="Center" />
             <Button
                 x:Name="BotonTema"
                 Grid.Column="1"
                 FontFamily="Iconos"
-                FontSize="24"
-                WidthRequest="48"
-                HeightRequest="48"
+                FontSize="22"
+                WidthRequest="44"
+                HeightRequest="44"
                 Padding="0"
-                CornerRadius="24"
+                CornerRadius="22"
                 BackgroundColor="{AppThemeBinding Light={StaticResource CampoClaro}, Dark={StaticResource CampoOscuro}}"
                 BorderColor="{AppThemeBinding Light={StaticResource BordeCampoClaro}, Dark={StaticResource BordeCampoOscuro}}"
                 BorderWidth="1"
                 TextColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}"
-                AutomationId="BotonTema"
                 SemanticProperties.Description="Cambiar entre modo claro y oscuro"
                 Clicked="OnAlternarTema" />
         </Grid>
-        <VerticalStackLayout Grid.Row="1" Spacing="12" Margin="0,24,0,0">
-            <Label x:Name="Descripcion" Style="{StaticResource TextoSecundario}" />
-            <Button Text="Acento" Style="{StaticResource BotonPrimario}" />
-            <Button Text="Secundario" Style="{StaticResource BotonSecundario}" />
-            <Button Text="Peligro" Style="{StaticResource BotonPeligro}" />
-        </VerticalStackLayout>
+
+        <!-- Búsqueda por título o director -->
+        <Border
+            Grid.Row="1"
+            Margin="16,4,16,8"
+            Padding="4,0,8,0"
+            HeightRequest="46"
+            StrokeThickness="1"
+            StrokeShape="RoundRectangle 23"
+            BackgroundColor="{AppThemeBinding Light={StaticResource CampoClaro}, Dark={StaticResource CampoOscuro}}"
+            Stroke="{AppThemeBinding Light={StaticResource BordeCampoClaro}, Dark={StaticResource BordeCampoOscuro}}">
+            <SearchBar
+                Text="{Binding TextoBusqueda}"
+                Placeholder="Buscar título o director"
+                FontFamily="Inter"
+                FontSize="14"
+                BackgroundColor="Transparent"
+                VerticalOptions="Center"
+                TextColor="{AppThemeBinding Light={StaticResource TextoClaro}, Dark={StaticResource TextoOscuro}}"
+                PlaceholderColor="{AppThemeBinding Light={StaticResource TextoSecundarioClaro}, Dark={StaticResource TextoSecundarioOscuro}}"
+                CancelButtonColor="{AppThemeBinding Light={StaticResource TextoSecundarioClaro}, Dark={StaticResource TextoSecundarioOscuro}}" />
+        </Border>
+
+        <!-- Chips de filtro -->
+        <HorizontalStackLayout Grid.Row="2" Padding="16,0,16,8" Spacing="8">
+            <controles:ChipFiltro
+                Text="Todas"
+                Valor="Todas"
+                Seleccionado="{Binding Estado}"
+                Command="{Binding CambiarEstadoCommand}"
+                CommandParameter="{x:Static lista:FiltroEstado.Todas}" />
+            <controles:ChipFiltro
+                Text="Vistas"
+                Valor="Vistas"
+                Seleccionado="{Binding Estado}"
+                Command="{Binding CambiarEstadoCommand}"
+                CommandParameter="{x:Static lista:FiltroEstado.Vistas}" />
+            <controles:ChipFiltro
+                Text="Pendientes"
+                Valor="Pendientes"
+                Seleccionado="{Binding Estado}"
+                Command="{Binding CambiarEstadoCommand}"
+                CommandParameter="{x:Static lista:FiltroEstado.Pendientes}" />
+        </HorizontalStackLayout>
+
+        <!-- ListView de películas agrupadas por género; cada fila es una PeliculaViewCell -->
+        <ListView
+            x:Name="ListaPeliculas"
+            Grid.Row="3"
+            ItemsSource="{Binding Grupos}"
+            IsVisible="{Binding MostrarLista}"
+            ItemTemplate="{DataTemplate celdas:PeliculaViewCell}"
+            IsGroupingEnabled="True"
+            GroupDisplayBinding="{Binding Genero, x:DataType=lista:GrupoPeliculas}"
+            HasUnevenRows="True"
+            CachingStrategy="RecycleElement"
+            SeparatorVisibility="None"
+            SelectionMode="None"
+            BackgroundColor="Transparent"
+            IsPullToRefreshEnabled="True"
+            RefreshCommand="{Binding RefrescarCommand}"
+            IsRefreshing="{Binding Refrescando}"
+            RefreshControlColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}"
+            ItemTapped="OnPeliculaTapped">
+            <ListView.GroupHeaderTemplate>
+                <DataTemplate x:DataType="lista:GrupoPeliculas">
+                    <ViewCell Height="44">
+                        <Label
+                            Text="{Binding Genero}"
+                            TextTransform="Uppercase"
+                            FontFamily="InterBold"
+                            FontSize="11"
+                            CharacterSpacing="1.6"
+                            Padding="20,0,20,8"
+                            VerticalOptions="End"
+                            TextColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}" />
+                    </ViewCell>
+                </DataTemplate>
+            </ListView.GroupHeaderTemplate>
+            <ListView.Footer>
+                <Label
+                    Text="{Binding Resumen}"
+                    IsVisible="{Binding MostrarResumen}"
+                    Style="{StaticResource TextoSecundario}"
+                    HorizontalTextAlignment="Center"
+                    Padding="20,12,20,104" />
+            </ListView.Footer>
+        </ListView>
+
+        <!-- Esqueleto mientras carga -->
+        <controles:EsqueletoLista
+            Grid.Row="3"
+            IsVisible="{Binding Cargando}"
+            BackgroundColor="{AppThemeBinding Light={StaticResource FondoClaro}, Dark={StaticResource FondoOscuro}}" />
+
+        <!-- Lista vacía -->
+        <controles:PanelEstado Grid.Row="3" IsVisible="{Binding Vacia}" Spacing="12" Padding="40,0" VerticalOptions="Center">
+            <Label Text="{x:Static helpers:Iconos.Pelicula}" FontFamily="Iconos" FontSize="56" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}" />
+            <Label Text="Tu lista está vacía" FontFamily="InterSemi" FontSize="18" HorizontalOptions="Center" />
+            <Label Text="Agrega tu primera película con el botón + o carga algunos ejemplos."
+                   Style="{StaticResource TextoSecundario}" HorizontalTextAlignment="Center" />
+            <Button Text="Cargar ejemplos" Style="{StaticResource BotonPrimario}" Margin="0,8,0,0"
+                    HorizontalOptions="Center" Command="{Binding CargarEjemplosCommand}" />
+        </controles:PanelEstado>
+
+        <!-- Sin resultados para la búsqueda o el filtro -->
+        <controles:PanelEstado Grid.Row="3" IsVisible="{Binding SinResultados}" Spacing="8" Padding="40,0" Margin="0,48,0,0" VerticalOptions="Start">
+            <Label Text="{x:Static helpers:Iconos.Buscar}" FontFamily="Iconos" FontSize="40" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light={StaticResource TextoSecundarioClaro}, Dark={StaticResource TextoSecundarioOscuro}}" />
+            <Label Text="No hay películas que coincidan" Style="{StaticResource TextoSecundario}" HorizontalTextAlignment="Center" />
+        </controles:PanelEstado>
+
+        <!-- Error de red o del servidor -->
+        <controles:PanelEstado
+            Grid.Row="3"
+            IsVisible="{Binding HayError}"
+            Spacing="12"
+            Padding="40,0"
+            VerticalOptions="Center"
+            BackgroundColor="{AppThemeBinding Light={StaticResource FondoClaro}, Dark={StaticResource FondoOscuro}}">
+            <Label Text="{Binding IconoError}" FontFamily="Iconos" FontSize="56" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light={StaticResource PeligroClaro}, Dark={StaticResource PeligroOscuro}}" />
+            <Label Text="{Binding Error}" FontFamily="InterSemi" FontSize="17" HorizontalTextAlignment="Center" />
+            <Label Text="Revisa tu conexión e inténtalo de nuevo." Style="{StaticResource TextoSecundario}" HorizontalTextAlignment="Center" />
+            <Button Text="Reintentar" Style="{StaticResource BotonSecundario}" Margin="0,8,0,0"
+                    HorizontalOptions="Center" Command="{Binding CargarCommand}" />
+        </controles:PanelEstado>
+
+        <!-- Botón flotante: nueva película -->
+        <Button
+            x:Name="BotonAgregar"
+            Grid.Row="3"
+            Text="{x:Static helpers:Iconos.Agregar}"
+            FontFamily="Iconos"
+            FontSize="30"
+            WidthRequest="58"
+            HeightRequest="58"
+            Padding="0"
+            CornerRadius="18"
+            Margin="0,0,20,24"
+            HorizontalOptions="End"
+            VerticalOptions="End"
+            BackgroundColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}"
+            TextColor="{AppThemeBinding Light={StaticResource AcentoTextoClaro}, Dark={StaticResource AcentoTextoOscuro}}"
+            SemanticProperties.Description="Agregar película"
+            Clicked="OnAgregar">
+            <Button.Shadow>
+                <Shadow Brush="Black" Opacity="0.3" Radius="12" Offset="0,4" />
+            </Button.Shadow>
+        </Button>
     </Grid>
 </ContentPage>

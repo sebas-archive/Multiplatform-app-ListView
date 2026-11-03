@@ -94,7 +94,8 @@ public class PeliculasRepository(HttpClient http) : IPeliculasRepository
             var texto = await resp.Content.ReadAsStringAsync(ct);
             return string.IsNullOrWhiteSpace(texto) ? null : JsonNode.Parse(texto) as JsonObject;
         }
-        catch (Exception ex) when (ex is HttpRequestException ||
+        // En Android el handler nativo informa la falta de red como WebException o IOException
+        catch (Exception ex) when (ex is HttpRequestException or WebException or IOException ||
                                    (ex is TaskCanceledException && !ct.IsCancellationRequested))
         {
             throw new RepositorioException("Sin conexión a internet", true, ex);
