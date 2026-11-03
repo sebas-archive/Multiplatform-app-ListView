@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="CineList.Views.FormularioPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:vm="clr-namespace:CineList.ViewModels"
+    xmlns:controles="clr-namespace:CineList.Controls"
+    xmlns:helpers="clr-namespace:CineList.Helpers"
+    x:DataType="vm:FormularioViewModel"
+    Shell.NavBarIsVisible="False"
+    Shell.PresentationMode="ModalAnimated"
+    Title="{Binding TituloPagina}">
+
+    <ContentPage.Resources>
+        <!-- Contenedor de cada campo: superficie redondeada; el borde se pinta con el acento al enfocar -->
+        <Style x:Key="CajaCampo" TargetType="Border">
+            <Setter Property="StrokeThickness" Value="1" />
+            <Setter Property="StrokeShape" Value="RoundRectangle 12" />
+            <Setter Property="Padding" Value="12,2" />
+            <Setter Property="MinimumHeightRequest" Value="48" />
+            <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource CampoClaro}, Dark={StaticResource CampoOscuro}}" />
+            <Setter Property="Stroke" Value="{AppThemeBinding Light={StaticResource BordeCampoClaro}, Dark={StaticResource BordeCampoOscuro}}" />
+        </Style>
+
+        <Style x:Key="RotuloCampo" TargetType="Label">
+            <Setter Property="FontFamily" Value="InterSemi" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="4,0,0,6" />
+            <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource TextoSecundarioClaro}, Dark={StaticResource TextoSecundarioOscuro}}" />
+        </Style>
+
+        <Style x:Key="BotonFoto" TargetType="Button" BasedOn="{StaticResource BotonSecundario}">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="HeightRequest" Value="44" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="ContentLayout" Value="Left,8" />
+            <Setter Property="HorizontalOptions" Value="Fill" />
+        </Style>
+
+        <!-- Deshabilitado (guardando o procesando foto): conserva el color, solo se atenúa -->
+        <Style x:Key="BotonGuardar" TargetType="Button" BasedOn="{StaticResource BotonPrimario}">
+            <Setter Property="VisualStateManager.VisualStateGroups">
+                <VisualStateGroupList>
+                    <VisualStateGroup x:Name="CommonStates">
+                        <VisualState x:Name="Normal">
+                            <VisualState.Setters>
+                                <Setter Property="Opacity" Value="1" />
+                            </VisualState.Setters>
+                        </VisualState>
+                        <VisualState x:Name="Disabled">
+                            <VisualState.Setters>
+                                <Setter Property="Opacity" Value="0.65" />
+                                <Setter Property="BackgroundColor" Value="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}" />
+                                <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource AcentoTextoClaro}, Dark={StaticResource AcentoTextoOscuro}}" />
+                            </VisualState.Setters>
+                        </VisualState>
+                    </VisualStateGroup>
+                </VisualStateGroupList>
+            </Setter>
+        </Style>
+    </ContentPage.Resources>
+
+    <Grid x:Name="Contenido" RowDefinitions="Auto,*,Auto">
+
+        <!-- Encabezado: cerrar y título -->
+        <Grid Padding="16,12,16,8" ColumnDefinitions="Auto,*" ColumnSpacing="14">
+            <Button
+                FontFamily="Iconos"
+                Text="{x:Static helpers:Iconos.Cerrar}"
+                FontSize="22"
+                WidthRequest="44"
+                HeightRequest="44"
+                Padding="0"
+                CornerRadius="22"
+                BackgroundColor="{AppThemeBinding Light={StaticResource CampoClaro}, Dark={StaticResource CampoOscuro}}"
+                BorderColor="{AppThemeBinding Light={StaticResource BordeCampoClaro}, Dark={StaticResource BordeCampoOscuro}}"
+                BorderWidth="1"
+                TextColor="{AppThemeBinding Light={StaticResource TextoClaro}, Dark={StaticResource TextoOscuro}}"
+                SemanticProperties.Description="Cerrar el formulario"
+                Command="{Binding CancelarCommand}" />
+            <Label
+                Grid.Column="1"
+                Text="{Binding TituloPagina}"
+                Style="{StaticResource TituloGrande}"
+                FontSize="24"
+                VerticalOptions="Center"
+                SemanticProperties.HeadingLevel="Level1" />
+        </Grid>
+
+        <ScrollView Grid.Row="1">
+            <VerticalStackLayout Padding="20,8,20,24" Spacing="18">
+
+                <!-- Póster: vista previa y acciones -->
+                <Grid x:Name="BloquePoster" ColumnDefinitions="120,*" ColumnSpacing="16">
+                    <Grid WidthRequest="120" HeightRequest="176" VerticalOptions="Start">
+                        <controles:PosterView
+                            x:Name="Poster"
+                            Pelicula="{Binding VistaPrevia}"
+                            SemanticProperties.Description="Vista previa del póster" />
+                        <!-- Indicador mientras se reduce y comprime la foto -->
+                        <Border
+                            StrokeThickness="0"
+                            StrokeShape="RoundRectangle 8"
+                            BackgroundColor="#99000000"
+                            IsVisible="{Binding ProcesandoFoto}">
+                            <ActivityIndicator
+                                IsRunning="{Binding ProcesandoFoto}"
+                                WidthRequest="32"
+                                HeightRequest="32"
+                                HorizontalOptions="Center"
+                                VerticalOptions="Center" />
+                        </Border>
+                    </Grid>
+
+                    <VerticalStackLayout Grid.Column="1" Spacing="10" VerticalOptions="Center">
+                        <Label Text="Póster" Style="{StaticResource RotuloCampo}" Margin="2,0,0,0" />
+                        <Button
+                            Text="Tomar foto"
+                            Style="{StaticResource BotonFoto}"
+                            IsVisible="{Binding PuedeTomarFoto}"
+                            IsEnabled="{Binding Libre}"
+                            Command="{Binding TomarFotoCommand}">
+                            <Button.ImageSource>
+                                <FontImageSource
+                                    FontFamily="Iconos"
+                                    Glyph="{x:Static helpers:Iconos.Camara}"
+                                    Size="20"
+                                    Color="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}" />
+                            </Button.ImageSource>
+                        </Button>
+                        <Button
+                            Text="Galería"
+                            Style="{StaticResource BotonFoto}"
+                            IsEnabled="{Binding Libre}"
+                            SemanticProperties.Description="Elegir el póster de la galería"
+                            Command="{Binding ElegirFotoCommand}">
+                            <Button.ImageSource>
+                                <FontImageSource
+                                    FontFamily="Iconos"
+                                    Glyph="{x:Static helpers:Iconos.Galeria}"
+                                    Size="20"
+                                    Color="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}" />
+                            </Button.ImageSource>
+                        </Button>
+                        <Button
+                            x:Name="BotonQuitar"
+                            Text="Quitar"
+                            Style="{StaticResource BotonFoto}"
+                            BackgroundColor="Transparent"
+                            BorderColor="Transparent"
+                            TextColor="{AppThemeBinding Light={StaticResource PeligroClaro}, Dark={StaticResource PeligroOscuro}}"
+                            IsVisible="{Binding HayPoster}"
+                            IsEnabled="{Binding Libre}"
+                            SemanticProperties.Description="Quitar la foto del póster"
+                            Command="{Binding QuitarFotoCommand}">
+                            <Button.ImageSource>
+                                <FontImageSource
+                                    FontFamily="Iconos"
+                                    Glyph="{x:Static helpers:Iconos.Eliminar}"
+                                    Size="20"
+                                    Color="{AppThemeBinding Light={StaticResource PeligroClaro}, Dark={StaticResource PeligroOscuro}}" />
+                            </Button.ImageSource>
+                        </Button>
+                        <Label
+                            Text="Este dispositivo no tiene cámara; elige el póster de la galería."
+                            Style="{StaticResource TextoSecundario}"
+                            FontSize="12"
+                            IsVisible="{Binding SinCamara}" />
+                    </VerticalStackLayout>
+                </Grid>
+
+                <!-- Título -->
+                <VerticalStackLayout x:Name="BloqueTitulo">
+                    <Label Text="Título" Style="{StaticResource RotuloCampo}" />
+                    <Border x:Name="CajaTitulo" Style="{StaticResource CajaCampo}">
+                        <Entry
+                            x:Name="CampoTitulo"
+                            Text="{Binding Titulo}"
+                            Placeholder="Ej.: El viaje de Chihiro"
+                            MaxLength="120"
+                            Keyboard="Text"
+                            ReturnType="Next"
+                            ClearButtonVisibility="WhileEditing" />
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- Director -->
+                <VerticalStackLayout x:Name="BloqueDirector">
+                    <Label Text="Director" Style="{StaticResource RotuloCampo}" />
+                    <Border x:Name="CajaDirector" Style="{StaticResource CajaCampo}">
+                        <Entry
+                            x:Name="CampoDirector"
+                            Text="{Binding Director}"
+                            Placeholder="Ej.: Hayao Miyazaki"
+                            MaxLength="80"
+                            Keyboard="Text"
+                            ReturnType="Next"
+                            ClearButtonVisibility="WhileEditing" />
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- Año y duración -->
+                <Grid x:Name="BloqueNumeros" ColumnDefinitions="*,*" ColumnSpacing="12">
+                    <VerticalStackLayout>
+                        <Label Text="Año" Style="{StaticResource RotuloCampo}" />
+                        <Border x:Name="CajaAnio" Style="{StaticResource CajaCampo}">
+                            <Entry
+                                x:Name="CampoAnio"
+                                Text="{Binding Anio}"
+                                Placeholder="2001"
+                                Keyboard="Numeric"
+                                MaxLength="4"
+                                ReturnType="Next" />
+                        </Border>
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="1">
+                        <Label Text="Duración (min)" Style="{StaticResource RotuloCampo}" />
+                        <Border x:Name="CajaDuracion" Style="{StaticResource CajaCampo}">
+                            <Entry
+                                x:Name="CampoDuracion"
+                                Text="{Binding Duracion}"
+                                Placeholder="125"
+                                Keyboard="Numeric"
+                                MaxLength="3"
+                                ReturnType="Done" />
+                        </Border>
+                    </VerticalStackLayout>
+                </Grid>
+
+                <!-- Género -->
+                <VerticalStackLayout x:Name="BloqueGenero">
+                    <Label Text="Género" Style="{StaticResource RotuloCampo}" />
+                    <Border x:Name="CajaGenero" Style="{StaticResource CajaCampo}">
+                        <Picker
+                            x:Name="CampoGenero"
+                            Title="Elige un género"
+                            ItemsSource="{Binding Generos}"
+                            SelectedItem="{Binding Genero}" />
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- Sinopsis -->
+                <VerticalStackLayout x:Name="BloqueSinopsis">
+                    <Label Text="Sinopsis" Style="{StaticResource RotuloCampo}" />
+                    <Border x:Name="CajaSinopsis" Style="{StaticResource CajaCampo}" Padding="12,6">
+                        <Editor
+                            x:Name="CampoSinopsis"
+                            Text="{Binding Sinopsis}"
+                            Placeholder="¿De qué trata?"
+                            AutoSize="TextChanges"
+                            MinimumHeightRequest="96"
+                            MaxLength="1000" />
+                    </Border>
+                </VerticalStackLayout>
+
+                <!-- Vista y calificación -->
+                <Border x:Name="BloqueEstado" Style="{StaticResource CajaCampo}" Padding="16,12">
+                    <VerticalStackLayout Spacing="14">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <VerticalStackLayout VerticalOptions="Center" Spacing="2">
+                                <Label Text="Ya la vi" FontFamily="InterSemi" FontSize="15" />
+                                <Label Text="Aparecerá como VISTA en la lista" Style="{StaticResource TextoSecundario}" FontSize="12" />
+                            </VerticalStackLayout>
+                            <Switch
+                                Grid.Column="1"
+                                IsToggled="{Binding Vista}"
+                                VerticalOptions="Center"
+                                OnColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}"
+                                SemanticProperties.Description="Ya la vi" />
+                        </Grid>
+                        <BoxView
+                            HeightRequest="1"
+                            Color="{AppThemeBinding Light={StaticResource BordeCampoClaro}, Dark={StaticResource FondoOscuro}}" />
+                        <Grid ColumnDefinitions="*,Auto">
+                            <VerticalStackLayout VerticalOptions="Center" Spacing="2">
+                                <Label Text="Calificación" FontFamily="InterSemi" FontSize="15" />
+                                <Label Text="Toca de nuevo para quitarla" Style="{StaticResource TextoSecundario}" FontSize="12" />
+                            </VerticalStackLayout>
+                            <controles:EstrellasView
+                                Grid.Column="1"
+                                Valor="{Binding Calificacion}"
+                                EsEditable="True"
+                                Tamano="30"
+                                Spacing="4"
+                                VerticalOptions="Center"
+                                SemanticProperties.Description="Calificación de 0 a 5 estrellas" />
+                        </Grid>
+                    </VerticalStackLayout>
+                </Border>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Pie fijo: errores de validación y botón Guardar -->
+        <VerticalStackLayout
+            x:Name="Pie"
+            Grid.Row="2"
+            Padding="20,10,20,16"
+            Spacing="10"
+            BackgroundColor="{AppThemeBinding Light={StaticResource FondoClaro}, Dark={StaticResource FondoOscuro}}">
+            <Border
+                x:Name="CajaErrores"
+                StrokeThickness="1"
+                StrokeShape="RoundRectangle 12"
+                Padding="14,10"
+                IsVisible="{Binding HayErrores}"
+                Stroke="{AppThemeBinding Light={StaticResource PeligroClaro}, Dark={StaticResource PeligroOscuro}}"
+                BackgroundColor="{AppThemeBinding Light=#FBEAE8, Dark=#26FF6B5E}">
+                <VerticalStackLayout Spacing="4" BindableLayout.ItemsSource="{Binding Errores}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                            <Label
+                                Text="{Binding .}"
+                                FontFamily="InterSemi"
+                                FontSize="13"
+                                TextColor="{AppThemeBinding Light={StaticResource PeligroClaro}, Dark={StaticResource PeligroOscuro}}" />
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+            </Border>
+            <Grid>
+                <Button
+                    Text="{Binding TextoGuardar}"
+                    Style="{StaticResource BotonGuardar}"
+                    IsEnabled="{Binding Libre}"
+                    Command="{Binding GuardarCommand}" />
+                <ActivityIndicator
+                    IsRunning="{Binding Guardando}"
+                    IsVisible="{Binding Guardando}"
+                    WidthRequest="22"
+                    HeightRequest="22"
+                    Margin="18,0"
+                    HorizontalOptions="Start"
+                    VerticalOptions="Center"
+                    InputTransparent="True"
+                    Color="{AppThemeBinding Light={StaticResource AcentoTextoClaro}, Dark={StaticResource AcentoTextoOscuro}}" />
+            </Grid>
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

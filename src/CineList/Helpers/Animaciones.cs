@@ -127,4 +127,45 @@ public static class Animaciones
         await v.ScaleTo(1.12, 100, Easing.CubicOut);
         await v.ScaleTo(1, 140, Easing.CubicOut);
     }
+
+    // Formulario: entra desde abajo (40 px) con fade; luego sus bloques aparecen escalonados
+    public static async Task EntradaModal(VisualElement contenido, IEnumerable<VisualElement> bloques)
+    {
+        var lista = bloques.ToList();
+        if (ReducirMovimiento)
+        {
+            contenido.Opacity = 1; contenido.TranslationY = 0;
+            foreach (var e in lista) { e.Opacity = 1; e.TranslationY = 0; }
+            return;
+        }
+        contenido.Opacity = 0;
+        contenido.TranslationY = 40;
+        foreach (var e in lista) { e.Opacity = 0; e.TranslationY = 16; }
+        await Task.WhenAll(
+            contenido.FadeTo(1, Media, Easing.CubicOut),
+            contenido.TranslateTo(0, 0, Larga, Easing.CubicOut),
+            EntradaEscalonada(lista, 35));
+    }
+
+    // Error de validación: sacudida horizontal breve
+    public static async Task Sacudir(VisualElement v)
+    {
+        if (ReducirMovimiento) return;
+        uint paso = 50;
+        await v.TranslateTo(-8, 0, paso, Easing.CubicOut);
+        await v.TranslateTo(8, 0, paso, Easing.CubicOut);
+        await v.TranslateTo(-5, 0, paso, Easing.CubicOut);
+        await v.TranslateTo(0, 0, paso, Easing.CubicOut);
+    }
+
+    // Nuevo póster en la vista previa: aparece con fade y escala leve (0.94 -> 1)
+    public static async Task CambioPoster(VisualElement v)
+    {
+        if (ReducirMovimiento) return;
+        v.Opacity = 0.3;
+        v.Scale = 0.94;
+        await Task.WhenAll(
+            v.FadeTo(1, Media, Easing.CubicOut),
+            v.ScaleTo(1, Media, Easing.CubicOut));
+    }
 }

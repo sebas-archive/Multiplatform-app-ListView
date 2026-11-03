@@ -33,6 +33,9 @@ public static class MauiProgram
 		builder.Services.AddTransient<PeliculasPage>();
 		builder.Services.AddTransient<DetalleViewModel>();
 		builder.Services.AddTransient<DetallePage>();
+		builder.Services.AddSingleton<PosterService>();
+		builder.Services.AddTransient<FormularioViewModel>();
+		builder.Services.AddTransient<FormularioPage>();
 
 #if ANDROID
 		// SearchBar sin la línea inferior nativa y con la lupa en el color de texto secundario
@@ -44,6 +47,15 @@ public static class MauiProgram
 				&& vista.PlaceholderColor is { } color)
 				lupa.SetColorFilter(color.ToPlatform());
 		});
+
+		// Campos del formulario sin la línea inferior nativa: el borde lo dibuja el Border que los envuelve
+		var sinLinea = Android.Content.Res.ColorStateList.ValueOf(Android.Graphics.Color.Transparent);
+		Microsoft.Maui.Handlers.EntryHandler.Mapper.AppendToMapping("SinLinea", (handler, _) =>
+			handler.PlatformView.BackgroundTintList = sinLinea);
+		Microsoft.Maui.Handlers.EditorHandler.Mapper.AppendToMapping("SinLinea", (handler, _) =>
+			handler.PlatformView.BackgroundTintList = sinLinea);
+		Microsoft.Maui.Handlers.PickerHandler.Mapper.AppendToMapping("SinLinea", (handler, _) =>
+			handler.PlatformView.BackgroundTintList = sinLinea);
 #endif
 
 #if DEBUG

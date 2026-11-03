@@ -27,6 +27,12 @@
         <Setter Property="PlaceholderColor" Value="{AppThemeBinding Light={StaticResource TextoSecundarioClaro}, Dark={StaticResource TextoSecundarioOscuro}}" />
     </Style>
 
+    <Style TargetType="Picker">
+        <Setter Property="FontFamily" Value="Inter" />
+        <Setter Property="TextColor" Value="{AppThemeBinding Light={StaticResource TextoClaro}, Dark={StaticResource TextoOscuro}}" />
+        <Setter Property="TitleColor" Value="{AppThemeBinding Light={StaticResource TextoSecundarioClaro}, Dark={StaticResource TextoSecundarioOscuro}}" />
+    </Style>
+
     <Style TargetType="ActivityIndicator">
         <Setter Property="Color" Value="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}" />
     </Style>

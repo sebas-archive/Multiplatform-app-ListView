@@ -11,6 +11,7 @@ public partial class PeliculasPage : ContentPage
 {
     private readonly PeliculasViewModel _vm;
     private readonly TemaService _tema;
+    private bool _navegando; // evita abrir dos páginas con un doble toque
 
     public PeliculasPage(PeliculasViewModel vm, TemaService tema)
     {
@@ -26,6 +27,9 @@ public partial class PeliculasPage : ContentPage
         try
         {
             if (!_vm.Cargada) _ = _vm.CargarCommand.ExecuteAsync(null);
+            // El "+" quedó girado 90° al abrir el formulario: con la sombra de Android, la rotación
+            // desplaza el botón; se vuelve a 0 (el glifo se ve igual)
+            BotonAgregar.Rotation = 0;
             await Animaciones.AparecerEscala(BotonAgregar);
         }
         catch (Exception ex)
@@ -40,6 +44,8 @@ public partial class PeliculasPage : ContentPage
     {
         if (e.Item is not Pelicula pelicula) return;
         ((ListView)sender).SelectedItem = null;
+        if (_navegando) return;
+        _navegando = true;
 
         try
         {
@@ -49,12 +55,19 @@ public partial class PeliculasPage : ContentPage
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[PeliculasPage] Ruta de detalle no disponible: {ex.Message}");
+            Debug.WriteLine($"[PeliculasPage] {ex.Message}");
+            await AvisarNavegacionAsync("No se pudo abrir el detalle");
+        }
+        finally
+        {
+            _navegando = false;
         }
     }
 
     private async void OnAgregar(object? sender, EventArgs e)
     {
+        if (_navegando) return;
+        _navegando = true;
         try
         {
             await Animaciones.RotarFab(BotonAgregar);
@@ -62,7 +75,12 @@ public partial class PeliculasPage : ContentPage
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[PeliculasPage] Ruta de formulario no disponible: {ex.Message}");
+            Debug.WriteLine($"[PeliculasPage] {ex.Message}");
+            await AvisarNavegacionAsync("No se pudo abrir el formulario");
+        }
+        finally
+        {
+            _navegando = false;
         }
     }
 
@@ -87,6 +105,19 @@ public partial class PeliculasPage : ContentPage
             BotonTema.Text = IconoTema();
             BotonTema.Rotation %= 360;
             BotonTema.IsEnabled = true;
+        }
+    }
+
+    // Un fallo de navegación no debe pasar en silencio
+    private static async Task AvisarNavegacionAsync(string mensaje)
+    {
+        try
+        {
+            if (Shell.Current is { } shell) await shell.DisplayAlert("Error", mensaje, "Aceptar");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[PeliculasPage] {ex.Message}");
         }
     }
 

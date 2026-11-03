@@ -7,8 +7,19 @@ public static class BarraEstado
     public static void Aplicar(AppTheme tema)
     {
 #if ANDROID
-        var ventana = Platform.CurrentActivity?.Window;
-        if (ventana is null) return;
+        var actividad = Platform.CurrentActivity;
+        if (actividad?.Window is { } ventana) Pintar(ventana, tema);
+        // Las páginas modales (formulario) viven en un diálogo con su propia ventana
+        if (actividad is AndroidX.Fragment.App.FragmentActivity fa)
+            foreach (var f in fa.SupportFragmentManager.Fragments)
+                if (f is AndroidX.Fragment.App.DialogFragment { Dialog.Window: { } dialogo })
+                    Pintar(dialogo, tema);
+#endif
+    }
+
+#if ANDROID
+    private static void Pintar(Android.Views.Window ventana, AppTheme tema)
+    {
         var oscuro = tema == AppTheme.Dark;
         var fondo = Android.Graphics.Color.ParseColor(oscuro ? "#0F1115" : "#F7F5F0");
 #pragma warning disable CA1422 // obsoleto en Android 15 (allí la app es edge-to-edge y no hace falta)
@@ -19,6 +30,6 @@ public static class BarraEstado
         if (controlador is null) return;
         controlador.AppearanceLightStatusBars = !oscuro;
         controlador.AppearanceLightNavigationBars = !oscuro;
-#endif
     }
+#endif
 }

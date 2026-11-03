@@ -111,8 +111,7 @@ public partial class DetalleViewModel(PeliculasViewModel lista, IPeliculasReposi
         }
         catch (Exception ex)
         {
-            // La ruta "formulario" se registra en la tarea del formulario
-            Debug.WriteLine($"[DetalleViewModel] Ruta de formulario no disponible: {ex.Message}");
+            await AvisarAsync(ex);
         }
         finally
         {
