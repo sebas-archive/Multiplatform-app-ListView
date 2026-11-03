@@ -21,6 +21,7 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
     private bool _ocupado;
     private int _siguienteIndiceEntrada;
     private CancellationTokenSource? _finEntrada;
+    private CancellationTokenSource? _finAviso;
 
     // Origen del ListView (agrupado por género)
     public ObservableCollection<GrupoPeliculas> Grupos { get; } = [];
@@ -35,10 +36,13 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
     [ObservableProperty] private bool _vacia;
     [ObservableProperty] private bool _sinResultados;
     [ObservableProperty] private bool _animarEntrada;
+    // Mensaje breve no bloqueante (p. ej. falló el refresco pero la lista sigue visible)
+    [ObservableProperty] private string? _aviso;
 
     public bool HayError => Error is not null;
     public bool MostrarLista => !HayError;
     public bool MostrarResumen => !Cargando && !Vacia && !HayError && !SinResultados;
+    public bool HayAviso => Aviso is not null;
     public bool Cargada => _cargada;
 
     // La página conecta aquí la animación de la celda que se elimina (fade + colapso)
@@ -46,6 +50,9 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
 
     // Se dispara cuando una película cambia sin salir de la lista (p. ej. vista/pendiente)
     public event Action<Pelicula>? PeliculaActualizada;
+
+    // Se dispara cuando una película sale de la lista (las celdas recicladas se restablecen)
+    public event Action<Pelicula>? PeliculaQuitada;
 
     partial void OnTextoBusquedaChanged(string value) => Aplicar(animar: false);
     partial void OnEstadoChanged(FiltroEstado value) => Aplicar(animar: true);
@@ -55,6 +62,7 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
         OnPropertyChanged(nameof(MostrarLista));
         OnPropertyChanged(nameof(MostrarResumen));
     }
+    partial void OnAvisoChanged(string? value) => OnPropertyChanged(nameof(HayAviso));
     partial void OnCargandoChanged(bool value) => OnPropertyChanged(nameof(MostrarResumen));
     partial void OnVaciaChanged(bool value) => OnPropertyChanged(nameof(MostrarResumen));
     partial void OnSinResultadosChanged(bool value) => OnPropertyChanged(nameof(MostrarResumen));
@@ -108,13 +116,13 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
         pelicula.Vista = copia.Vista;
         if (FiltroPeliculas.Filtrar([pelicula], TextoBusqueda, Estado).Count == 0)
         {
-            Aplicar(animar: false); // ya no cumple el filtro: sale de la lista
+            QuitarDeGrupos(pelicula); // ya no cumple el filtro: sale de la lista
         }
         else
         {
-            Resumen = FiltroPeliculas.Resumen(Grupos.SelectMany(g => g));
             PeliculaActualizada?.Invoke(pelicula);
         }
+        ActualizarConteos();
     }
 
     [RelayCommand]
@@ -136,6 +144,7 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
         if (AnimarEliminacion is not null) await AnimarEliminacion(pelicula);
         ImagenPoster.Invalidar(pelicula.Id);
         Quitar(pelicula.Id);
+        PeliculaQuitada?.Invoke(pelicula);
     }
 
     public Pelicula? Buscar(string id) => _todas.FirstOrDefault(p => p.Id == id);
@@ -150,10 +159,13 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
         Aplicar(animar: false);
     }
 
+    // Quita en su lugar (sin reconstruir la lista, para conservar la posición del scroll)
     public void Quitar(string id)
     {
+        var pelicula = Buscar(id);
         _todas.RemoveAll(p => p.Id == id);
-        Aplicar(animar: false);
+        if (pelicula is not null) QuitarDeGrupos(pelicula);
+        ActualizarConteos();
     }
 
     // La celda pide su posición en la entrada escalonada (máx. 10 filas con retraso)
@@ -167,16 +179,32 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
             return;
         }
         _ocupado = true;
-        if (mostrarEsqueleto) Cargando = true;
+        if (mostrarEsqueleto)
+        {
+            Error = null; // al reintentar se oculta el error y se ve el esqueleto
+            Cargando = true;
+        }
+        // Con esqueleto, se muestra al menos 600 ms: un reintento sin red falla al instante
+        // y sin esta pausa el usuario no notaría que se volvió a intentar
+        var pausaMinima = mostrarEsqueleto ? Task.Delay(600) : Task.CompletedTask;
         try
         {
-            _todas = (await repositorio.ListarAsync()).ToList();
+            var lista = await repositorio.ListarAsync();
+            await pausaMinima;
+            _todas = lista.ToList();
             _cargada = true;
             Error = null;
             Aplicar(animar: true);
         }
+        catch (Exception ex) when (!mostrarEsqueleto && _todas.Count > 0)
+        {
+            // Falló el refresco con la lista ya cargada: se conserva y se avisa sin bloquear
+            Debug.WriteLine($"[PeliculasViewModel] {ex}");
+            MostrarAviso(ex is RepositorioException ? ex.Message : "No se pudo actualizar la lista");
+        }
         catch (Exception ex)
         {
+            await pausaMinima;
             MostrarError(ex);
         }
         finally
@@ -196,10 +224,43 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
         Grupos.Clear();
         foreach (var grupo in FiltroPeliculas.Agrupar(filtradas))
             Grupos.Add(grupo);
+        ActualizarConteos();
+    }
 
-        Resumen = FiltroPeliculas.Resumen(filtradas);
+    // Saca una película de su grupo; si el grupo queda vacío, se quita el grupo
+    private void QuitarDeGrupos(Pelicula pelicula)
+    {
+        for (var i = 0; i < Grupos.Count; i++)
+        {
+            var grupo = Grupos[i];
+            if (!grupo.Any(p => p.Id == pelicula.Id)) continue;
+            if (grupo.Count == 1) Grupos.RemoveAt(i);
+            else Grupos[i] = new GrupoPeliculas(grupo.Genero, grupo.Where(p => p.Id != pelicula.Id));
+            return;
+        }
+    }
+
+    private void ActualizarConteos()
+    {
+        var visibles = Grupos.SelectMany(g => g).ToList();
+        Resumen = FiltroPeliculas.Resumen(visibles);
         Vacia = _cargada && Error is null && _todas.Count == 0;
-        SinResultados = _todas.Count > 0 && filtradas.Count == 0;
+        SinResultados = _todas.Count > 0 && visibles.Count == 0;
+    }
+
+    private async void MostrarAviso(string mensaje)
+    {
+        _finAviso?.Cancel();
+        var cts = _finAviso = new CancellationTokenSource();
+        Aviso = mensaje;
+        try
+        {
+            await Task.Delay(3000, cts.Token);
+            Aviso = null;
+        }
+        catch (TaskCanceledException)
+        {
+        }
     }
 
     // Activa la entrada escalonada y la apaga a los 600 ms para que el scroll no la repita

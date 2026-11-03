@@ -8,7 +8,14 @@ public class PanelEstado : VerticalStackLayout
         base.OnPropertyChanged(propertyName);
         if (propertyName != nameof(IsVisible) || !IsVisible) return;
         if (Helpers.Animaciones.ReducirMovimiento) { Opacity = 1; return; }
-        Opacity = 0;
-        await this.FadeTo(1, 250, Easing.CubicOut);
+        try
+        {
+            Opacity = 0;
+            await this.FadeTo(1, 250, Easing.CubicOut);
+        }
+        catch (Exception)
+        {
+            Opacity = 1; // nunca dejar el panel invisible
+        }
     }
 }

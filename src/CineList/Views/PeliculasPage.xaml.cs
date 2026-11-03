@@ -23,8 +23,16 @@ public partial class PeliculasPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        if (!_vm.Cargada) _ = _vm.CargarCommand.ExecuteAsync(null);
-        await Animaciones.AparecerEscala(BotonAgregar);
+        try
+        {
+            if (!_vm.Cargada) _ = _vm.CargarCommand.ExecuteAsync(null);
+            await Animaciones.AparecerEscala(BotonAgregar);
+        }
+        catch (Exception ex)
+        {
+            BotonAgregar.Scale = BotonAgregar.Opacity = 1;
+            Debug.WriteLine($"[PeliculasPage] {ex.Message}");
+        }
     }
 
     // Evento de selección de registro (Guía 8)
@@ -33,10 +41,10 @@ public partial class PeliculasPage : ContentPage
         if (e.Item is not Pelicula pelicula) return;
         ((ListView)sender).SelectedItem = null;
 
-        if (PeliculaViewCell.VistaDe(pelicula) is { } celda)
-            await Animaciones.Pulsar(celda);
         try
         {
+            if (PeliculaViewCell.VistaDe(pelicula) is { } celda)
+                await Animaciones.Pulsar(celda);
             await Shell.Current.GoToAsync($"detalle?id={pelicula.Id}");
         }
         catch (Exception ex)
@@ -47,9 +55,9 @@ public partial class PeliculasPage : ContentPage
 
     private async void OnAgregar(object? sender, EventArgs e)
     {
-        await Animaciones.RotarFab(BotonAgregar);
         try
         {
+            await Animaciones.RotarFab(BotonAgregar);
             await Shell.Current.GoToAsync("formulario");
         }
         catch (Exception ex)
@@ -61,14 +69,25 @@ public partial class PeliculasPage : ContentPage
     private async void OnAlternarTema(object? sender, EventArgs e)
     {
         BotonTema.IsEnabled = false; // evita cambios encadenados mientras dura la animación
-        var giro = Animaciones.ReducirMovimiento
-            ? Task.CompletedTask
-            : BotonTema.RotateTo(BotonTema.Rotation + 180, 350, Easing.CubicOut);
-        await _tema.AlternarAsync(Contenido);
-        BotonTema.Text = IconoTema();
-        await giro;
-        BotonTema.Rotation %= 360;
-        BotonTema.IsEnabled = true;
+        try
+        {
+            var giro = Animaciones.ReducirMovimiento
+                ? Task.CompletedTask
+                : BotonTema.RotateTo(BotonTema.Rotation + 180, 350, Easing.CubicOut);
+            await _tema.AlternarAsync(Contenido);
+            await giro;
+        }
+        catch (Exception ex)
+        {
+            Contenido.Opacity = 1;
+            Debug.WriteLine($"[PeliculasPage] {ex.Message}");
+        }
+        finally
+        {
+            BotonTema.Text = IconoTema();
+            BotonTema.Rotation %= 360;
+            BotonTema.IsEnabled = true;
+        }
     }
 
     // En modo oscuro se ofrece el sol (pasar a claro); en modo claro, la luna

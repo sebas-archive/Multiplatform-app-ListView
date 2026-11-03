@@ -162,6 +162,19 @@
                     HorizontalOptions="Center" Command="{Binding CargarCommand}" />
         </controles:PanelEstado>
 
+        <!-- Aviso breve (no bloquea la lista) -->
+        <controles:PanelEstado Grid.Row="3" IsVisible="{Binding HayAviso}" VerticalOptions="End" Margin="20,0,92,32">
+            <Border
+                Padding="16,10"
+                StrokeThickness="0"
+                StrokeShape="RoundRectangle 14"
+                HorizontalOptions="Start"
+                BackgroundColor="{AppThemeBinding Light={StaticResource TextoClaro}, Dark={StaticResource CampoOscuro}}">
+                <Label Text="{Binding Aviso}" FontFamily="InterSemi" FontSize="13"
+                       TextColor="{AppThemeBinding Light={StaticResource FondoClaro}, Dark={StaticResource TextoOscuro}}" />
+            </Border>
+        </controles:PanelEstado>
+
         <!-- Botón flotante: nueva película -->
         <Button
             x:Name="BotonAgregar"

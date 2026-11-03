@@ -96,22 +96,27 @@ public class PeliculaViewCell : ViewCell
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        Mostrar();
         if (!_vm.AnimarEntrada) return;
-
-        // Entrada escalonada: 40 ms entre filas
-        var indice = _vm.SiguienteIndiceEntrada();
-        View.Opacity = 0;
-        await Task.Delay(indice * 40);
-        await Animaciones.EntradaEscalonada([View]);
+        try
+        {
+            // Entrada escalonada: 40 ms entre filas
+            var indice = _vm.SiguienteIndiceEntrada();
+            View.Opacity = 0;
+            await Task.Delay(indice * 40);
+            await Animaciones.EntradaEscalonada([View]);
+        }
+        catch (Exception ex)
+        {
+            View.Opacity = 1;
+            System.Diagnostics.Debug.WriteLine($"[PeliculaViewCell] {ex.Message}");
+        }
     }
 
     // Pinta los datos de la película en los controles
     private void Mostrar()
     {
         if (Pelicula is not { } p) return;
-        _poster.Pelicula = p;
-        _poster.Actualizar();
+        _poster.Pelicula = p; // el póster se repinta solo si cambia la película
         _titulo.Text = p.Titulo;
         _datos.Text = string.Join(" · ", new[]
         {
@@ -163,6 +168,7 @@ public class PeliculaViewCell : ViewCell
         if (_conectada) return;
         _conectada = true;
         vm.PeliculaActualizada += CambioDeEstado;
+        vm.PeliculaQuitada += RestablecerCeldasDe;
         vm.AnimarEliminacion = AnimarEliminacionAsync;
     }
 
@@ -170,14 +176,31 @@ public class PeliculaViewCell : ViewCell
     private static async void CambioDeEstado(Pelicula pelicula)
     {
         if (CeldaDe(pelicula) is not { } celda) return;
-        if (Animaciones.ReducirMovimiento)
+        try
         {
+            if (!Animaciones.ReducirMovimiento) await celda._etiqueta.FadeTo(0, 120, Easing.CubicOut);
             celda.MostrarEstado(pelicula.Vista);
-            return;
+            if (!Animaciones.ReducirMovimiento)
+                await Task.WhenAll(celda._etiqueta.FadeTo(1, 150, Easing.CubicOut), Animaciones.Rebote(celda._etiqueta));
         }
-        await celda._etiqueta.FadeTo(0, 120, Easing.CubicOut);
-        celda.MostrarEstado(pelicula.Vista);
-        await Task.WhenAll(celda._etiqueta.FadeTo(1, 150, Easing.CubicOut), Animaciones.Rebote(celda._etiqueta));
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PeliculaViewCell] {ex.Message}");
+        }
+        finally
+        {
+            celda._etiqueta.Opacity = 1;
+            celda._etiqueta.Scale = 1;
+        }
+    }
+
+    // Tras eliminar: ninguna celda (reciclada) debe quedar transparente o colapsada
+    private static void RestablecerCeldasDe(Pelicula pelicula)
+    {
+        Celdas.RemoveAll(w => !w.TryGetTarget(out _));
+        foreach (var w in Celdas)
+            if (w.TryGetTarget(out var celda) && celda.Pelicula?.Id == pelicula.Id)
+                celda.Restablecer();
     }
 
     private static Task AnimarEliminacionAsync(Pelicula pelicula) =>
