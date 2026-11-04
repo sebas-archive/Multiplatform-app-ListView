@@ -8,6 +8,17 @@ public static class PosterGenerado
         "el", "la", "los", "las", "un", "una", "the", "a", "de"
     };
 
+    /// <summary>Pares de colores (arriba, abajo) para el póster generado.</summary>
+    public static IReadOnlyList<(string Inicio, string Fin)> PaletaHex { get; } =
+    [
+        ("#2B5876", "#4E4376"),
+        ("#C94B4B", "#4B134F"),
+        ("#3A7D44", "#1D3B2A"),
+        ("#D38312", "#A83279"),
+        ("#1F6F8B", "#0B2A3A"),
+        ("#614385", "#516395"),
+    ];
+
     public static string Iniciales(string titulo)
     {
         var palabras = (titulo ?? string.Empty)

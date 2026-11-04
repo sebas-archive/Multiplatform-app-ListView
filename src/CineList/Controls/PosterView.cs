@@ -9,15 +9,9 @@ namespace CineList.Controls;
 public class PosterView : Border
 {
     // Pares de colores (arriba, abajo) para el póster generado
-    private static readonly (Color Inicio, Color Fin)[] Paleta =
-    [
-        (Color.FromArgb("#2B5876"), Color.FromArgb("#4E4376")),
-        (Color.FromArgb("#C94B4B"), Color.FromArgb("#4B134F")),
-        (Color.FromArgb("#3A7D44"), Color.FromArgb("#1D3B2A")),
-        (Color.FromArgb("#D38312"), Color.FromArgb("#A83279")),
-        (Color.FromArgb("#1F6F8B"), Color.FromArgb("#0B2A3A")),
-        (Color.FromArgb("#614385"), Color.FromArgb("#516395")),
-    ];
+    private static readonly (Color Inicio, Color Fin)[] Paleta = PosterGenerado.PaletaHex
+        .Select(par => (Color.FromArgb(par.Inicio), Color.FromArgb(par.Fin)))
+        .ToArray();
 
     public static readonly BindableProperty PeliculaProperty = BindableProperty.Create(
         nameof(Pelicula), typeof(Pelicula), typeof(PosterView),

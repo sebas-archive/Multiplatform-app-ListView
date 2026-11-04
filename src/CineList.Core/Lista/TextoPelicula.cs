@@ -1,11 +1,11 @@
 using CineList.Core.Models;
 
-namespace CineList.Helpers;
+namespace CineList.Core.Lista;
 
-// Textos derivados de una película que comparten la lista y el detalle
+/// <summary>Textos derivados de una película que comparten la lista y el detalle.</summary>
 public static class TextoPelicula
 {
-    // "Director · 2014 · 169 min" (omite las partes vacías)
+    /// <summary>"Director · 2014 · 169 min" (omite las partes vacías).</summary>
     public static string Meta(Pelicula p) => string.Join(" · ", new[]
     {
         p.Director.Trim(),

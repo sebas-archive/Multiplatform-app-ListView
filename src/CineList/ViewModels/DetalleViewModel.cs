@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using CineList.Core.Firestore;
+using CineList.Core.Lista;
 using CineList.Core.Models;
 using CineList.Helpers;
 using CineList.Services;

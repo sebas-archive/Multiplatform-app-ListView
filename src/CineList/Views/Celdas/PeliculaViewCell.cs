@@ -1,4 +1,5 @@
 using CineList.Controls;
+using CineList.Core.Lista;
 using CineList.Core.Models;
 using CineList.Helpers;
 using CineList.ViewModels;
