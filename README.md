@@ -1,11 +1,12 @@
 # CineList
 
-Aplicación móvil de lista de películas hecha con .NET MAUI 9 (Android). Proyecto de la Guía 8, "Trabajo con ListView". Las películas se guardan en Firebase Firestore y se muestran en un `ListView` agrupado por género con celdas personalizadas (`ViewCell`).
+Aplicación de lista de películas hecha con .NET MAUI 9 (Android), con una versión web en Blazor WebAssembly. Proyecto de la Guía 8, "Trabajo con ListView". Las películas se guardan en Firebase Firestore y se muestran en un `ListView` agrupado por género con celdas personalizadas (`ViewCell`).
 
 ## Tecnologías
 
 - .NET 9 y .NET MAUI (destino `net9.0-android`, Android 5.0 / API 21 o superior)
 - `ListView` con `PeliculaViewCell : ViewCell` en C# y `ItemTapped`
+- Blazor WebAssembly (.NET 9) para la versión web (`src/CineList.Web`)
 - Firebase Firestore mediante la API REST (sin SDK nativo)
 - xUnit para las pruebas de la lógica (`CineList.Core`)
 - Íconos vectoriales (Material Symbols), sin emojis
@@ -13,12 +14,13 @@ Aplicación móvil de lista de películas hecha con .NET MAUI 9 (Android). Proye
 ## Estructura
 
 - `src/CineList`: aplicación MAUI (vistas, celdas, servicios de la interfaz)
+- `src/CineList.Web`: versión web (Blazor WebAssembly, mismos datos y lógica)
 - `src/CineList.Core`: modelo, búsqueda, validación, mapeo de Firestore y repositorio
 - `tests/CineList.Core.Tests`: pruebas unitarias
 
 ## Paso a paso: cómo ver la app
 
-CineList es una app **Android**. Hay tres formas de verla.
+CineList es una app **Android** y también tiene versión web. Hay tres formas de verla.
 
 ### Opción A: en el PC con el emulador de Android (la más fácil para el video)
 
@@ -63,12 +65,42 @@ Alternativa por cable: activa *Opciones de desarrollador → Depuración USB*, c
 
 Para mostrar el celular en la pantalla del PC (útil en la exposición) puedes usar [scrcpy](https://github.com/Genymobile/scrcpy): con el celular conectado por USB y la depuración activada, ejecuta `scrcpy`.
 
-### Opción C: ¿y en la web?
+### Opción C: en el navegador (versión web)
 
-Esta app **no se puede abrir en el navegador**: .NET MAUI genera apps nativas (Android, iOS, Windows, macOS), no páginas web. Lo que sí se puede ver desde el navegador:
+Además del APK hay una versión web hecha con Blazor WebAssembly (`src/CineList.Web`). Funciona en cualquier navegador moderno y no necesita emulador.
 
-- **Los datos**: en la [consola de Firebase](https://console.firebase.google.com/) → proyecto `cinelist-7a4de` → *Firestore Database* → colección `movies`. Si agregas o editas una película en la app, el cambio aparece ahí.
-- **Una versión web de la app**: está planeada como trabajo futuro (React leyendo la misma colección de Firestore, con los mismos colores). Todavía no existe.
+1. Abre una terminal en la carpeta del proyecto:
+   ```bash
+   cd "/home/t1an/aplicacion listview"
+   ```
+2. Inicia la versión web:
+   ```bash
+   dotnet run --project src/CineList.Web
+   ```
+3. Abre <http://localhost:5180> en el navegador. Para detenerla, pulsa `Ctrl+C` en la terminal.
+
+Qué comparte con el APK:
+
+- **Los mismos datos**: lee y guarda en la misma colección `movies` de Firestore (proyecto `cinelist-7a4de`). Lo que cambies en la web aparece en la app y viceversa.
+- **Las mismas reglas** de búsqueda, filtros y orden (vienen de `CineList.Core`); los filtros y el orden se recuerdan en el navegador.
+- **El mismo aspecto**: paleta de colores, tipografías e íconos, con tema oscuro y claro (el primer arranque sigue al sistema; el botón sol/luna lo alterna y la elección se recuerda).
+
+Diferencias con el APK:
+
+- En lugar de la pulsación larga, cada fila tiene un menú ⋮ con las acciones (marcar como vista o pendiente, eliminar).
+- El póster se sube desde un archivo de imagen (no hay cámara); se reduce antes de guardarlo igual que en el celular.
+- No hay actualización en tiempo real ni pull-to-refresh: se actualiza con el botón "Recargar" o recargando la página.
+
+Publicación opcional en Firebase Hosting (solo documentada, no se ha ejecutado):
+
+```bash
+dotnet publish src/CineList.Web -c Release
+firebase init hosting   # carpeta pública: src/CineList.Web/bin/Release/net9.0/publish/wwwroot
+                        # app de una sola página: sí (reescribe todo a /index.html)
+firebase deploy
+```
+
+También puedes ver los datos directamente en la [consola de Firebase](https://console.firebase.google.com/) → proyecto `cinelist-7a4de` → *Firestore Database* → colección `movies`.
 
 Nota sobre Windows: el proyecto incluye el destino `net9.0-windows10.0.19041.0`, que solo se compila desde Windows con Visual Studio 2022 (carga de trabajo ".NET MAUI"). No se ha probado; la versión probada es la de Android.
 
