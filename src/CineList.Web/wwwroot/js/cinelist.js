@@ -2,6 +2,23 @@
 (function () {
     const reducir = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    // Convierte lo que llega desde Blazor a bytes. .NET serializa byte[] como base64 (texto) al cruzar
+    // a JS; sin decodificarlo, new Blob([texto]) crea un archivo de puros caracteres, no la imagen.
+    // También se aceptan Uint8Array, ArrayBuffer o un array de números (todos los caminos válidos).
+    const aBytes = (datos) => {
+        if (datos instanceof Uint8Array) return datos;
+        if (datos instanceof ArrayBuffer) return new Uint8Array(datos);
+        if (Array.isArray(datos)) return Uint8Array.from(datos);
+        if (typeof datos !== 'string') return null;
+        const limpio = datos.replace(/^data:[^,]*,/, '').replace(/\s+/g, ''); // admite data URL y saltos
+        try {
+            const binario = atob(limpio);
+            const bytes = new Uint8Array(binario.length);
+            for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
+            return bytes;
+        } catch { return null; }
+    };
+
     // Anima con Web Animations y resuelve al terminar (o enseguida si no hay elemento / movimiento reducido)
     const animar = (el, cuadros, opciones) => {
         if (!el || reducir() || !el.animate) return Promise.resolve();
@@ -107,10 +124,19 @@
         cerrarPanel: () => document.documentElement.classList.remove('sin-scroll'),
         // Reduce una imagen subida: decodifica respetando la orientación EXIF, escala (lado mayor = ladoMax,
         // sin agrandar) y exporta JPEG. Devuelve el base64 sin prefijo, o null si el archivo no es una imagen.
-        reducirImagen: async (bytes, ladoMax, calidad) => {
+        // `datos` puede ser el base64 que envía Blazor o bytes (Uint8Array/ArrayBuffer/array).
+        reducirImagen: async (datos, ladoMax, calidad) => {
+            const bytes = aBytes(datos);
+            if (!bytes || bytes.length === 0) return null;
             let mapa;
             try {
-                mapa = await createImageBitmap(new Blob([bytes]), { imageOrientation: 'from-image' });
+                const archivo = new Blob([bytes]);
+                try {
+                    mapa = await createImageBitmap(archivo, { imageOrientation: 'from-image' });
+                } catch {
+                    // Navegadores sin la opción imageOrientation (o que la rechazan): se decodifica igual
+                    mapa = await createImageBitmap(archivo);
+                }
             } catch { return null; }
             try {
                 const mayor = Math.max(mapa.width, mapa.height);

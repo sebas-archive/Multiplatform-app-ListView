@@ -327,7 +327,10 @@
                 await flujo.CopyToAsync(memoria);
                 bytes = memoria.ToArray();
             }
-            var base64 = await JS.InvokeAsync<string?>("cinelist.reducirImagen", bytes, PosterPolicy.LadoMaximo, PosterPolicy.CalidadJpeg / 100.0);
+            // byte[] cruza a JS como base64 (System.Text.Json); se envía explícito para no depender de esa
+            // conversión implícita y que el contrato con cinelist.reducirImagen quede claro.
+            var base64Archivo = Convert.ToBase64String(bytes);
+            var base64 = await JS.InvokeAsync<string?>("cinelist.reducirImagen", base64Archivo, PosterPolicy.LadoMaximo, PosterPolicy.CalidadJpeg / 100.0);
             if (base64 is null)
             {
                 _errorFoto = "El archivo no es una imagen válida";
@@ -335,7 +338,7 @@
             }
             if (!PosterPolicy.CabeEnDocumento(base64))
             {
-                base64 = await JS.InvokeAsync<string?>("cinelist.reducirImagen", bytes, 450, 0.50);
+                base64 = await JS.InvokeAsync<string?>("cinelist.reducirImagen", base64Archivo, 450, 0.50);
                 if (base64 is null || !PosterPolicy.CabeEnDocumento(base64))
                 {
                     _errorFoto = "La imagen es demasiado grande";
