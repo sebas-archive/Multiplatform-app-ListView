@@ -5,3 +5,14 @@
     line-height: 1;
 }
 .vacia { opacity: 0.45; }
+
+/* Llenado una a una ("backwards": escala 0 durante el retraso, sin transform al terminar) */
+.llenado > span {
+    animation: estrella-pop 270ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+    animation-delay: calc(var(--retraso, 0ms) + var(--n, 0) * 60ms);
+}
+@keyframes estrella-pop {
+    0% { transform: scale(0); }
+    55% { transform: scale(1.25); }
+    100% { transform: scale(1); }
+}

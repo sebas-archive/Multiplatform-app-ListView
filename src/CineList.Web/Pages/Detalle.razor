@@ -1,0 +1,280 @@
+@page "/pelicula/{Id}"
+@implements IAsyncDisposable
+@inject EstadoLista Estado
+@inject NavigationManager Navegacion
+@inject IJSRuntime JS
+
+<PageTitle>@(_pelicula is null ? "Película" : _pelicula.Titulo) · CineList</PageTitle>
+
+@* Detalle (como DetallePage del APK): fondo con el póster desenfocado, póster grande, datos, estrellas,
+   etiqueta, sinopsis y acciones. El póster llega volando desde la fila con View Transitions. *@
+@if (_pelicula is not null)
+{
+    @* Fuera del flujo: se posiciona respecto a la ventana (ningún contenedor está posicionado) *@
+    <div class="fondo" aria-hidden="true">
+        <div class="fondo-capa" @ref="_fondo">
+            <div class="fondo-arte" style="@EstiloFondo">
+                @if (!string.IsNullOrEmpty(_pelicula.PosterBase64))
+                {
+                    <img src="data:image/jpeg;base64,@_pelicula.PosterBase64" alt="" draggable="false" />
+                }
+            </div>
+            <div class="fondo-velo"></div>
+        </div>
+    </div>
+}
+
+<div class="detalle">
+    <header class="barra-detalle">
+        <button type="button" class="boton-redondo" aria-label="Volver a la lista" @onclick="VolverAsync">
+            <span class="icono" aria-hidden="true">&#xe5c4;</span>
+        </button>
+    </header>
+
+    @if (_pelicula is null && (Estado.Cargando || !Estado.Cargada && Estado.Error is null))
+    {
+        <div class="esqueleto" aria-busy="true" aria-label="Cargando película">
+            <div class="caja esqueleto-poster"></div>
+            <div class="caja" style="width: 80px; height: 10px"></div>
+            <div class="caja" style="width: 220px; height: 22px"></div>
+            <div class="caja" style="width: 160px; height: 12px"></div>
+        </div>
+    }
+    else if (_pelicula is null && Estado.Error is not null)
+    {
+        <div class="panel-estado" role="alert">
+            <span class="icono icono-estado peligro" aria-hidden="true">@(Estado.ErrorSinConexion ? "" : "")</span>
+            <p class="mensaje">@Estado.Error</p>
+            <div class="botones-estado">
+                <button type="button" class="boton secundario" @onclick="Estado.CargarAsync">Reintentar</button>
+                <button type="button" class="boton primario" @onclick="IrALista">Volver</button>
+            </div>
+        </div>
+    }
+    else if (_pelicula is null)
+    {
+        <div class="panel-estado" role="alert">
+            <span class="icono icono-estado acento" aria-hidden="true">&#xe404;</span>
+            <h1 class="mensaje" tabindex="-1">Película no encontrada</h1>
+            <p class="nota">Esta película ya no existe</p>
+            <button type="button" class="boton primario" @onclick="IrALista">Volver</button>
+        </div>
+    }
+    else
+    {
+        var p = _pelicula;
+        <div class="contenido">
+            <div class="marco-poster" @ref="_marco" data-vt-detalle="@TransicionPoster.IdSeguro(p.Id)">
+                <PosterImagen Pelicula="p" Clase="poster-detalle" TamanoIniciales="56" />
+            </div>
+
+            <div class="entra" style="--i: 0">
+                <p class="genero">@Genero(p)</p>
+                <h1 class="titulo" tabindex="-1">@p.Titulo</h1>
+            </div>
+
+            @if (TextoPelicula.Meta(p) is { Length: > 0 } meta)
+            {
+                <p class="meta entra" style="--i: 1">@meta</p>
+            }
+
+            <div class="estado entra" style="--i: 2">
+                <Estrellas Valor="p.Calificacion" Tamano="26" RetrasoLlenadoMs="RetrasoEstrellasMs" />
+                <span class="etiqueta @(_vistaMostrada ? "vista" : "pendiente")" @ref="_etiqueta">@TextoPelicula.Etiqueta(_vistaMostrada)</span>
+            </div>
+
+            <p class="sinopsis entra @(string.IsNullOrWhiteSpace(p.Sinopsis) ? "sin-sinopsis" : "")" style="--i: 3">
+                @(string.IsNullOrWhiteSpace(p.Sinopsis) ? "Esta película aún no tiene sinopsis." : p.Sinopsis.Trim())
+            </p>
+
+            <div class="acciones entra" style="--i: 4">
+                <button type="button" class="boton primario" @ref="_botonVista" disabled="@_ocupado" @onclick="AlternarVistaAsync">
+                    @(p.Vista ? "Marcar pendiente" : "Marcar vista")
+                </button>
+                <button type="button" class="boton secundario" disabled="@_ocupado" @onclick="Editar">Editar</button>
+                <button type="button" class="boton peligro" disabled="@_ocupado" @onclick="() => _confirmarEliminar = true">Eliminar</button>
+            </div>
+        </div>
+    }
+</div>
+
+@if (Estado.Aviso is not null)
+{
+    <div class="aviso" role="status">@Estado.Aviso</div>
+}
+
+<Dialogo Visible="_confirmarEliminar && _pelicula is not null"
+         Titulo="Eliminar película"
+         Texto="@($"¿Eliminar \"{_pelicula?.Titulo}\"?")"
+         TextoConfirmar="Eliminar"
+         TextoCancelar="Cancelar"
+         Peligro="true"
+         OnConfirmar="ConfirmarEliminarAsync"
+         OnCancelar="() => _confirmarEliminar = false" />
+
+@code {
+    // Entrada: póster 350 ms y bloques escalonados (50 ms); luego las estrellas (60 ms entre cada una)
+    // y al final el "pop" de la etiqueta (ver Detalle.razor.css)
+    private const int RetrasoEstrellasMs = 450;
+
+    [Parameter] public string Id { get; set; } = "";
+
+    private Pelicula? _pelicula;
+    private ElementReference _marco;
+    private ElementReference _fondo;
+    private ElementReference _etiqueta;
+    private ElementReference _botonVista;
+    private bool _vistaMostrada;
+    private bool _girando;
+    private bool _ocupado;
+    private bool _saliendo;
+    private bool _confirmarEliminar;
+    private bool _parallaxActivo;
+    private bool _desechada;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Estado.Cambio += AlCambiar;
+        // Carga directa o recarga en /pelicula/{id}: primero se descarga la lista (con esqueleto)
+        Sincronizar();
+        if (!Estado.Cargada) await Estado.IniciarAsync();
+        Sincronizar();
+    }
+
+    protected override void OnParametersSet() => Sincronizar();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // El parallax se engancha cuando el póster existe y se suelta si desaparece
+        var hayPoster = _pelicula is not null;
+        if (hayPoster == _parallaxActivo) return;
+        _parallaxActivo = hayPoster;
+        try
+        {
+            if (hayPoster) await JS.InvokeVoidAsync("cinelist.iniciarParallax", _marco, _fondo);
+            else await JS.InvokeVoidAsync("cinelist.detenerParallax");
+        }
+        catch (JSException ex) { Console.WriteLine($"[Detalle] {ex.Message}"); }
+        catch (JSDisconnectedException) { }
+    }
+
+    private void AlCambiar() => InvokeAsync(() =>
+    {
+        Sincronizar();
+        StateHasChanged();
+    });
+
+    // Toma la película actual de la lista. Mientras se sale (tras eliminar) se conserva la última para
+    // no mostrar "no encontrada" un instante antes de volver
+    private void Sincronizar()
+    {
+        var actual = Estado.Buscar(Id);
+        if (actual is null && _saliendo) return;
+        _pelicula = actual;
+        // Durante el giro la etiqueta conserva el texto anterior hasta la mitad de la animación
+        if (!_girando && actual is not null) _vistaMostrada = actual.Vista;
+    }
+
+    private static string Genero(Pelicula p) =>
+        (p.Genero.Trim() is { Length: > 0 } g ? g : "Sin género").ToUpperInvariant();
+
+    private string EstiloFondo
+    {
+        get
+        {
+            if (_pelicula is null || !string.IsNullOrEmpty(_pelicula.PosterBase64)) return "";
+            var paleta = CineList.Core.Poster.PosterGenerado.PaletaHex;
+            var (inicio, fin) = paleta[CineList.Core.Poster.PosterGenerado.IndicePaleta(_pelicula.Titulo, paleta.Count)];
+            return $"background: linear-gradient(160deg, {inicio}, {fin})";
+        }
+    }
+
+    // Marcar vista/pendiente: solo tras guardar con éxito la etiqueta gira; al pasar a VISTA sale una
+    // ráfaga hacia arriba desde el borde superior del botón. Si falla, EstadoLista muestra el aviso
+    private async Task AlternarVistaAsync()
+    {
+        if (_ocupado || _saliendo || _pelicula is not { } pelicula) return;
+        _ocupado = true;
+        _girando = true;
+        try
+        {
+            if (!await Estado.AlternarVistaAsync(pelicula) || _desechada) return;
+            var vista = Estado.Buscar(Id)?.Vista ?? !pelicula.Vista;
+            if (vista == _vistaMostrada) return;
+            if (vista) await JS.InvokeVoidAsync("cinelist.rafaga", _botonVista, 8, -165, -15, 50, 70, "arriba");
+            await JS.InvokeVoidAsync("cinelist.girarIda", _etiqueta);
+            if (_desechada) return;
+            _vistaMostrada = vista;
+            StateHasChanged();
+            await JS.InvokeVoidAsync("cinelist.girarVuelta", _etiqueta);
+        }
+        catch (JSException ex) { Console.WriteLine($"[Detalle] {ex.Message}"); }
+        catch (JSDisconnectedException) { }
+        finally
+        {
+            _girando = false;
+            _ocupado = false;
+            if (!_desechada) Sincronizar();
+        }
+    }
+
+    private void Editar()
+    {
+        if (_ocupado || _saliendo || _pelicula is null) return;
+        _saliendo = true;
+        Navegacion.NavigateTo($"editar/{Uri.EscapeDataString(_pelicula.Id)}");
+    }
+
+    private async Task ConfirmarEliminarAsync()
+    {
+        _confirmarEliminar = false;
+        if (_ocupado || _saliendo || _pelicula is not { } pelicula) return;
+        _ocupado = true;
+        _saliendo = true; // Quitar() notifica antes de navegar: se conserva la película en pantalla
+        try
+        {
+            if (await Estado.EliminarAsync(pelicula))
+            {
+                Navegacion.NavigateTo("");
+                return;
+            }
+            _saliendo = false; // falló: EstadoLista ya mostró el aviso y se sigue en el detalle
+        }
+        finally
+        {
+            _ocupado = false;
+            if (!_desechada) Sincronizar();
+        }
+    }
+
+    // Volver: el póster regresa a su fila con View Transitions (si se puede); si no, navegación normal
+    private async Task VolverAsync()
+    {
+        if (_saliendo) return;
+        _saliendo = true;
+        var conTransicion = false;
+        if (_pelicula is not null)
+        {
+            try
+            {
+                conTransicion = await JS.InvokeAsync<bool>("cinelist.volverConTransicion",
+                    _marco, "/", TransicionPoster.IdSeguro(_pelicula.Id));
+            }
+            catch (JSException ex) { Console.WriteLine($"[Detalle] {ex.Message}"); }
+            catch (JSDisconnectedException) { }
+        }
+        if (!conTransicion && !_desechada) Navegacion.NavigateTo("");
+    }
+
+    private void IrALista() => Navegacion.NavigateTo("");
+
+    public async ValueTask DisposeAsync()
+    {
+        _desechada = true;
+        Estado.Cambio -= AlCambiar;
+        if (!_parallaxActivo) return;
+        try { await JS.InvokeVoidAsync("cinelist.detenerParallax"); }
+        catch (JSException) { }
+        catch (JSDisconnectedException) { }
+    }
+}

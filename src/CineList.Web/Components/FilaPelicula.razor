@@ -5,7 +5,8 @@
 
 @* Fila de la lista (como la celda del APK): póster, título, datos, estrellas, etiqueta y menú ⋮.
    Clic en cualquier parte salvo el menú abre el detalle. *@
-<div class="fila @(_menuAbierto ? "con-menu" : "")" style="--i: @Indice" role="link" tabindex="0"
+<div class="fila @(_menuAbierto ? "con-menu" : "")" style="--i: @Indice" role="link" tabindex="0" @ref="_fila"
+     data-vt-fila="@TransicionPoster.IdSeguro(Pelicula.Id)"
      aria-label="@($"{Pelicula.Titulo}, {TextoPelicula.Etiqueta(_vistaMostrada).ToLowerInvariant()}")"
      @onclick="Abrir" @onkeydown="TeclaFila">
     <PosterImagen Pelicula="Pelicula" Clase="poster-fila" />
@@ -44,6 +45,7 @@
     /// <summary>La página pide confirmación y elimina.</summary>
     [Parameter] public EventCallback<Pelicula> OnEliminar { get; set; }
 
+    private ElementReference _fila;
     private ElementReference _etiqueta;
     private ElementReference _primeraOpcion;
     private ElementReference _botonMenu;
@@ -53,6 +55,7 @@
     private bool _girando;
     private bool _vistaMostrada;
     private bool _desechada;
+    private bool _abriendo;
 
     protected override void OnParametersSet()
     {
@@ -70,13 +73,26 @@
         catch (InvalidOperationException) { }
     }
 
-    private void Abrir() =>
-        Navegacion.NavigateTo($"pelicula/{Uri.EscapeDataString(Pelicula.Id)}");
-
-    private void TeclaFila(KeyboardEventArgs e)
+    // Abre el detalle: con View Transitions el póster vuela de la fila al detalle; si el navegador no
+    // la soporta (o hay movimiento reducido) se navega normal
+    private async Task Abrir()
     {
-        if (e.Key is "Enter" or " ") Abrir();
+        if (_abriendo) return;
+        _abriendo = true;
+        var url = $"pelicula/{Uri.EscapeDataString(Pelicula.Id)}";
+        var conTransicion = false;
+        try
+        {
+            conTransicion = await JS.InvokeAsync<bool>("cinelist.navegarConTransicion",
+                _fila, url, TransicionPoster.IdSeguro(Pelicula.Id));
+        }
+        catch (JSException ex) { Console.WriteLine($"[FilaPelicula] {ex.Message}"); }
+        catch (JSDisconnectedException) { }
+        if (!conTransicion && !_desechada) Navegacion.NavigateTo(url);
+        _abriendo = false;
     }
+
+    private Task TeclaFila(KeyboardEventArgs e) => e.Key is "Enter" or " " ? Abrir() : Task.CompletedTask;
 
     private void AlternarMenu()
     {

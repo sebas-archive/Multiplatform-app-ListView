@@ -1,0 +1,195 @@
+/* Fondo: el póster desenfocado arriba (360 px), fundido hacia el color Fondo del tema.
+   Absoluto respecto a la ventana (ancho completo); la capa interior se mueve con el parallax. */
+.fondo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 360px;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+    animation: fondo-entra 350ms ease-out backwards;
+}
+.fondo-capa { position: absolute; inset: 0; will-change: transform; }
+/* Más grande que el fondo: el desenfoque aclara los bordes y así quedan fuera de la vista */
+.fondo-arte {
+    position: absolute;
+    inset: -48px;
+    opacity: 0.35;
+    filter: blur(24px);
+    background: var(--campo);
+}
+.fondo-arte img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fondo-velo {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom,
+        color-mix(in srgb, var(--fondo) 0%, transparent) 0%,
+        color-mix(in srgb, var(--fondo) 55%, transparent) 55%,
+        var(--fondo) 100%);
+}
+
+.detalle {
+    position: relative;
+    z-index: 1;
+    padding-bottom: 40px;
+}
+
+.barra-detalle { padding: 12px 0 4px; }
+
+.contenido {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 8px 8px 0;
+}
+
+/* Póster grande: el marco recibe el parallax (transform/opacidad en línea) y el nombre de la transición */
+.marco-poster {
+    width: 220px;
+    height: 320px;
+    border-radius: 8px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+    animation: poster-entra 350ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+}
+::deep .poster-detalle { width: 100%; height: 100%; }
+
+.genero {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.11em;
+    color: var(--acento);
+    text-align: center;
+    margin-bottom: 6px;
+}
+.titulo {
+    font-family: var(--fuente-titulo);
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    overflow-wrap: anywhere;
+}
+.titulo:focus { outline: none; }
+.meta { font-size: 14px; color: var(--texto-secundario); text-align: center; margin-top: -8px; }
+
+.estado { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.etiqueta {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    transform-origin: center;
+    backface-visibility: hidden;
+    /* "Pop" al final de la entrada: tras el llenado de las 5 estrellas (450 + 4 × 60 + 270 ms) */
+    animation: etiqueta-pop 270ms cubic-bezier(0.22, 0.61, 0.36, 1) 960ms backwards;
+}
+.etiqueta.vista { color: var(--vista-texto); background: var(--vista-fondo); }
+.etiqueta.pendiente { color: var(--pendiente-texto); background: var(--pendiente-fondo); }
+
+.sinopsis {
+    align-self: stretch;
+    font-size: 15px;
+    line-height: 1.45;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+.sin-sinopsis { color: var(--texto-secundario); }
+
+.acciones { align-self: stretch; display: flex; flex-direction: column; gap: 12px; }
+
+.boton {
+    min-height: 48px;
+    padding: 0 20px;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    transition: transform 150ms ease, opacity 150ms ease;
+}
+.boton:active:not(:disabled) { transform: scale(0.98); }
+.boton:disabled { opacity: 0.6; cursor: default; }
+.boton:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.primario { background: var(--acento); color: var(--acento-texto); }
+.secundario { background: var(--campo); border-color: var(--borde-campo); color: var(--texto); }
+.peligro { background: transparent; border-color: var(--peligro); color: var(--peligro); }
+
+/* Entrada escalonada de los bloques (50 ms entre cada uno) */
+.entra {
+    animation: bloque-entra 300ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+    animation-delay: calc(60ms + var(--i, 0) * 50ms);
+}
+
+@keyframes fondo-entra { from { opacity: 0; } }
+@keyframes poster-entra { from { opacity: 0; transform: scale(0.9); } }
+@keyframes bloque-entra { from { opacity: 0; transform: translateY(16px); } }
+@keyframes etiqueta-pop {
+    0% { transform: scale(0); }
+    55% { transform: scale(1.15); }
+    100% { transform: scale(1); }
+}
+
+/* Carga directa: esqueleto con la forma del detalle */
+.esqueleto { display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 8px; }
+.caja {
+    border-radius: 6px;
+    max-width: 100%;
+    background: linear-gradient(90deg,
+        color-mix(in srgb, var(--texto-secundario) 18%, transparent) 0%,
+        color-mix(in srgb, var(--texto-secundario) 34%, transparent) 50%,
+        color-mix(in srgb, var(--texto-secundario) 18%, transparent) 100%);
+    background-size: 200% 100%;
+    animation: brillo 1.2s linear infinite;
+}
+.esqueleto-poster { width: 220px; height: 320px; border-radius: 8px; margin-bottom: 6px; }
+@keyframes brillo { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+/* No encontrada / error */
+.panel-estado {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    padding: 64px 24px 0;
+    animation: aparecer 220ms ease-out;
+}
+.panel-estado .boton { margin-top: 8px; }
+.botones-estado { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+@keyframes aparecer { from { opacity: 0; } }
+.icono-estado { font-size: 56px; }
+.peligro.icono-estado { color: var(--peligro); }
+.acento { color: var(--acento); }
+.mensaje { font-size: 17px; font-weight: 600; max-width: 420px; }
+.mensaje:focus { outline: none; }
+.nota { font-size: 13px; color: var(--texto-secundario); max-width: 420px; }
+
+/* Aviso breve abajo (fallo al guardar o eliminar) */
+.aviso {
+    position: fixed;
+    left: 50%;
+    bottom: 32px;
+    z-index: 50;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: calc(min(100vw, 720px) - 40px);
+    padding: 10px 16px;
+    border-radius: 14px;
+    background: var(--texto);
+    color: var(--fondo);
+    font-size: 13px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    animation: aviso-entra 200ms ease-out;
+}
+:root[data-tema="oscuro"] .aviso { background: var(--campo); color: var(--texto); }
+@keyframes aviso-entra { from { opacity: 0; transform: translate(-50%, 12px); } }
+
+/* Pantallas angostas: póster más chico */
+@media (max-width: 399px) {
+    .marco-poster, .esqueleto-poster { width: 180px; height: 262px; }
+    .titulo { font-size: 24px; }
+}

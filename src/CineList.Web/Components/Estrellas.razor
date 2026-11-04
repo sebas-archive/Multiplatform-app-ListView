@@ -1,14 +1,18 @@
-@* Fila de 5 estrellas de solo lectura: llenas con la fuente rellena, vacías en contorno con menos opacidad *@
-<span class="estrellas" role="img" aria-label="@Etiqueta" style="font-size: @(Tamano)px">
+@* Fila de 5 estrellas de solo lectura: llenas con la fuente rellena, vacías en contorno con menos opacidad.
+   Con RetrasoLlenadoMs aparecen una a una (0 -> 1.25 -> 1, 60 ms entre cada una) tras ese retraso. *@
+<span class="estrellas @(RetrasoLlenadoMs is null ? "" : "llenado")" role="img" aria-label="@Etiqueta"
+      style="font-size: @(Tamano)px@(RetrasoLlenadoMs is { } r ? $"; --retraso: {r}ms" : "")">
     @for (var i = 1; i <= 5; i++)
     {
-        <span class="@(i <= Valor ? "icono-lleno llena" : "icono vacia")" aria-hidden="true">&#xf09a;</span>
+        <span class="@(i <= Valor ? "icono-lleno llena" : "icono vacia")" style="--n: @(i - 1)" aria-hidden="true">&#xf09a;</span>
     }
 </span>
 
 @code {
     [Parameter] public int Valor { get; set; }
     [Parameter] public int Tamano { get; set; } = 13;
+    /// <summary>Si tiene valor, las estrellas se llenan una a una empezando tras este retraso (ms).</summary>
+    [Parameter] public int? RetrasoLlenadoMs { get; set; }
 
     private string Etiqueta => Valor == 0 ? "Sin calificar" : $"{Valor} de 5 estrellas";
 }

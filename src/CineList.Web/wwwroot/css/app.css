@@ -102,3 +102,15 @@ html.sin-scroll, html.sin-scroll body { overflow: hidden; }
     pointer-events: none;
     z-index: 200;
 }
+
+/* Transición del póster lista <-> detalle (View Transitions; cinelist.js pone los nombres solo durante ella).
+   El póster de destino no hace su propia entrada: lo trae la transición. */
+html.vt-poster .marco-poster { animation: none !important; }
+::view-transition-group(*) {
+    animation-duration: 380ms;
+    animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 250ms; }
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
