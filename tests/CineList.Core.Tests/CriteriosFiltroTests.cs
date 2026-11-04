@@ -64,4 +64,11 @@ public class CriteriosFiltroTests
         Assert.Equal(5, CriteriosFiltro.DesdeJson("{\"CalificacionMinima\":9}").CalificacionMinima);
         Assert.Equal(0, CriteriosFiltro.DesdeJson("{\"CalificacionMinima\":-3}").CalificacionMinima);
     }
+
+    [Fact]
+    public void DesdeJson_DescartaNullEnGeneros()
+    {
+        var c = CriteriosFiltro.DesdeJson("{\"Generos\":[null,\"Drama\"]}");
+        Assert.Equal(["Drama"], c.Generos);
+    }
 }

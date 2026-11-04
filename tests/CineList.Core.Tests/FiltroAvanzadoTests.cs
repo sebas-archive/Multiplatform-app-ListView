@@ -85,6 +85,45 @@ public class FiltroAvanzadoTests
         Assert.True(DecadaTexto.Contiene(Decada.D2020s, 2031));
     }
 
+    [Theory]
+    [InlineData(0, Decada.Todas, Decada.Antes1980)]
+    [InlineData(1979, Decada.Antes1980, Decada.D1980s)]
+    [InlineData(1980, Decada.D1980s, Decada.Antes1980)]
+    [InlineData(1989, Decada.D1980s, Decada.D1990s)]
+    [InlineData(1990, Decada.D1990s, Decada.D1980s)]
+    [InlineData(1999, Decada.D1990s, Decada.D2000s)]
+    [InlineData(2000, Decada.D2000s, Decada.D1990s)]
+    [InlineData(2009, Decada.D2000s, Decada.D2010s)]
+    [InlineData(2010, Decada.D2010s, Decada.D2000s)]
+    [InlineData(2019, Decada.D2010s, Decada.D2020s)]
+    [InlineData(2020, Decada.D2020s, Decada.D2010s)]
+    [InlineData(2031, Decada.D2020s, Decada.D2010s)]
+    public void DecadaContiene_Bordes(int anio, Decada contiene, Decada vecina)
+    {
+        Assert.True(DecadaTexto.Contiene(contiene, anio));
+        Assert.False(DecadaTexto.Contiene(vecina, anio));
+        foreach (var d in Enum.GetValues<Decada>().Where(d => d != Decada.Todas && d != contiene))
+            Assert.False(DecadaTexto.Contiene(d, anio));
+    }
+
+    [Fact]
+    public void Aplicar_Decada_2019y2020()
+    {
+        var datos = new List<Pelicula> { P("A2019", "x", 2019, 1), P("B2020", "x", 2020, 1) };
+        Assert.Equal(["A2019"], Titulos(FiltroPeliculas.Aplicar(datos, C(decada: Decada.D2010s))));
+        Assert.Equal(["B2020"], Titulos(FiltroPeliculas.Aplicar(datos, C(decada: Decada.D2020s))));
+    }
+
+    [Fact]
+    public void SinGeneroLiteral_SeTrataComoSinGenero()
+    {
+        var datos = new List<Pelicula> { P("L", "Sin género", 1, 1), P("V", "", 1, 1), P("D", "Drama", 1, 1) };
+        Assert.Equivalent(new[] { "L", "V" }, Titulos(FiltroPeliculas.Aplicar(datos, C(generos: [FiltroPeliculas.SinGenero]))));
+        var r = FiltroPeliculas.GenerosDisponibles(datos);
+        Assert.Single(r, g => g == FiltroPeliculas.SinGenero);
+        Assert.Equal(FiltroPeliculas.SinGenero, r[^1]);
+    }
+
     [Fact]
     public void Aplicar_CalificacionMinima()
     {
