@@ -61,7 +61,7 @@ public partial class PeliculasPage : ContentPage
         {
             if (PeliculaViewCell.VistaDe(pelicula) is { } celda)
                 await Animaciones.Pulsar(celda);
-            await Shell.Current.GoToAsync($"detalle?id={pelicula.Id}");
+            await Shell.Current.GoToAsync($"detalle?id={Uri.EscapeDataString(pelicula.Id)}");
         }
         catch (Exception ex)
         {

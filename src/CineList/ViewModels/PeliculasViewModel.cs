@@ -113,6 +113,9 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
             await AvisarAsync(ex);
             return;
         }
+        // Excepción intencional a la regla de clonar: se muta la instancia en su lugar. Las filas
+        // visibles se repintan con PeliculaActualizada; las que están fuera de pantalla se repintan
+        // al reciclarse (rebind); ninguna otra pantalla viva conserva esta instancia.
         pelicula.Vista = copia.Vista;
         if (FiltroPeliculas.Filtrar([pelicula], TextoBusqueda, Estado).Count == 0)
         {
@@ -297,10 +300,18 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
         Vacia = false;
     }
 
-    private static Task AvisarAsync(Exception ex)
+    private static async Task AvisarAsync(Exception ex)
     {
         Debug.WriteLine($"[PeliculasViewModel] {ex}");
         var mensaje = MensajesError.Para(ex, "No se pudo completar la operación");
-        return Shell.Current?.DisplayAlert("CineList", mensaje, "Aceptar") ?? Task.CompletedTask;
+        try
+        {
+            if (Shell.Current is { } shell)
+                await shell.DisplayAlert("CineList", mensaje, "Aceptar");
+        }
+        catch (Exception alerta)
+        {
+            Debug.WriteLine($"[PeliculasViewModel] {alerta.Message}");
+        }
     }
 }

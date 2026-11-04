@@ -49,7 +49,7 @@ dotnet test tests/CineList.Core.Tests
 
 - Proyecto: `cinelist-7a4de`
 - Colección: `movies` (campos `title`, `director`, `genre`, `year`, `durationMin`, `synopsis`, `watched`, `rating`, `poster`, `createdAt`)
-- La configuración está en `src/CineList/Services/FirebaseConfig.cs` (`ApiKey` y `ProjectId`). La API key web de Firebase no es secreta por sí sola; la protección real son las reglas de seguridad.
+- La configuración está en `src/CineList.Core/Firestore/FirebaseConfig.cs` (`ApiKey` y `ProjectId`). La API key web de Firebase no es secreta por sí sola; la protección real son las reglas de seguridad.
 - Reglas usadas: lectura y escritura abiertas únicamente sobre `movies/{id}`; cualquier otra colección responde 403.
 
 ```
@@ -65,7 +65,7 @@ service cloud.firestore {
 
 Advertencia: las reglas abiertas son aceptables solo para un proyecto de clase. Cualquier persona con la API key puede leer y modificar la colección `movies`. Para un uso real habría que activar autenticación (por ejemplo anónima) y restringir las reglas.
 
-Los pósters se guardan como JPEG en base64 dentro del documento (lado mayor 600 px, calidad 70, máximo 900 000 caracteres).
+Los pósters se guardan como JPEG en base64 dentro del documento (lado mayor 600 px, calidad 70, máximo 900 000 caracteres de base64).
 
 ## Evidencias de la Guía 8
 
@@ -79,13 +79,13 @@ Los pósters se guardan como JPEG en base64 dentro del documento (lado mayor 600
 ## Funciones
 
 - Lista de películas agrupada por género, con encabezados de grupo
-- Búsqueda sin distinguir mayúsculas ni tildes (título, director y género)
-- Chips de filtro (por ejemplo vistas y pendientes)
-- Acciones contextuales con pulsación larga (marcar como vista o pendiente, editar, eliminar)
+- Búsqueda sin distinguir mayúsculas ni tildes (título y director)
+- Chips de filtro: todas, vistas y pendientes
+- Acciones contextuales con pulsación larga (marcar como vista o pendiente, eliminar)
 - Pull-to-refresh
 - Calificación con estrellas
 - Fotos de póster desde la cámara o la galería, reducidas antes de guardarse
 - Detalle, alta y edición de películas
-- Temas claro y oscuro según el sistema
+- Temas claro y oscuro: el primer arranque sigue al sistema; un botón permite alternarlo y la elección se recuerda
 - Animaciones breves (se omiten las decorativas si el sistema pide reducir movimiento)
 - Estados de carga, vacío y error con "Reintentar" cuando no hay conexión

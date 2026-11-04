@@ -34,9 +34,16 @@ public class MainActivity : MauiAppCompatActivity
 		var raiz = Window?.DecorView;
 		raiz?.Post(() =>
 		{
-			if (raiz.FindViewById(Resource.Id.action_mode_close_button) is Android.Widget.ImageView cerrar)
-				cerrar.SetColorFilter(Android.Graphics.Color.White);
-			LimpiarFondoFilas(raiz);
+			try
+			{
+				if (raiz.FindViewById(Resource.Id.action_mode_close_button) is Android.Widget.ImageView cerrar)
+					cerrar.SetColorFilter(Android.Graphics.Color.White);
+				LimpiarFondoFilas(raiz);
+			}
+			catch (Exception ex)
+			{
+				Android.Util.Log.Warn("CineList", $"ActionMode: {ex.Message}");
+			}
 		});
 	}
 
