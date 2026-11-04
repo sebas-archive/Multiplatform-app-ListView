@@ -24,4 +24,33 @@ public class MainActivity : MauiAppCompatActivity
 					contenedor.DefaultFocusHighlightEnabled = false;
 			};
 	}
+
+	// Pulsación larga (ContextActions): el ListView pinta la fila elegida con un fondo blanco a todo
+	// lo ancho y la flecha de cerrar toma el color de control oscuro sobre la barra #0F1115.
+	// Se deja la fila sin fondo (la tarjeta ya se ve sola) y la flecha en blanco.
+	public override void OnSupportActionModeStarted(AndroidX.AppCompat.View.ActionMode? mode)
+	{
+		base.OnSupportActionModeStarted(mode);
+		var raiz = Window?.DecorView;
+		raiz?.Post(() =>
+		{
+			if (raiz.FindViewById(Resource.Id.action_mode_close_button) is Android.Widget.ImageView cerrar)
+				cerrar.SetColorFilter(Android.Graphics.Color.White);
+			LimpiarFondoFilas(raiz);
+		});
+	}
+
+	private static void LimpiarFondoFilas(Android.Views.View? vista)
+	{
+		if (vista is Android.Widget.AbsListView lista)
+		{
+			lista.Selector = new Android.Graphics.Drawables.ColorDrawable(Android.Graphics.Color.Transparent);
+			for (var i = 0; i < lista.ChildCount; i++)
+				lista.GetChildAt(i)!.Background = null;
+			return;
+		}
+		if (vista is Android.Views.ViewGroup grupo)
+			for (var i = 0; i < grupo.ChildCount; i++)
+				LimpiarFondoFilas(grupo.GetChildAt(i));
+	}
 }
