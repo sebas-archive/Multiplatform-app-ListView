@@ -16,7 +16,63 @@ Aplicación móvil de lista de películas hecha con .NET MAUI 9 (Android). Proye
 - `src/CineList.Core`: modelo, búsqueda, validación, mapeo de Firestore y repositorio
 - `tests/CineList.Core.Tests`: pruebas unitarias
 
-## Compilar y ejecutar en Android
+## Paso a paso: cómo ver la app
+
+CineList es una app **Android**. Hay tres formas de verla.
+
+### Opción A: en el PC con el emulador de Android (la más fácil para el video)
+
+Requisitos (ya instalados en este equipo): .NET 9 SDK con `maui-android`, JDK 17, Android SDK y el emulador `Pixel_8`.
+
+1. Abre una terminal en la carpeta del proyecto:
+   ```bash
+   cd "/home/t1an/aplicacion listview"
+   ```
+2. Enciende el emulador (se abre una ventana con el celular virtual; espera a que muestre la pantalla de inicio):
+   ```bash
+   $HOME/Android/Sdk/emulator/emulator -avd Pixel_8 &
+   ```
+3. Instala y abre la app. Elige una de las dos formas:
+   - **Con el APK ya compilado** (rápido):
+     ```bash
+     $HOME/Android/Sdk/platform-tools/adb install -r CineList.apk
+     $HOME/Android/Sdk/platform-tools/adb shell monkey -p com.cinelist.app -c android.intent.category.LAUNCHER 1
+     ```
+   - **Compilando desde el código** (si cambiaste algo):
+     ```bash
+     dotnet build src/CineList -f net9.0-android -t:Run \
+       -p:JavaSdkDirectory=/usr/lib/jvm/java-17-openjdk \
+       -p:AndroidSdkDirectory=$HOME/Android/Sdk
+     ```
+4. La app aparece en el emulador. También queda instalada en el cajón de apps como **CineList** (ícono de claqueta dorada).
+5. Para grabar el video puedes usar el grabador de pantalla del sistema sobre la ventana del emulador, o el botón de grabar de los controles del emulador (menú `...` → *Record and Playback*).
+
+Si la app se ve con una versión vieja, desinstálala y vuelve al paso 3:
+```bash
+$HOME/Android/Sdk/platform-tools/adb uninstall com.cinelist.app
+```
+
+### Opción B: en tu celular Android
+
+1. Copia `CineList.apk` (está en la raíz del proyecto) al celular: por cable USB, Google Drive, Telegram o correo.
+2. En el celular, abre el archivo. Android pedirá permitir **"Instalar apps desconocidas"** para la app con la que lo abriste (Archivos, Drive...). Actívalo y vuelve.
+3. Toca **Instalar** y luego **Abrir**.
+4. El celular necesita internet: las películas se leen y guardan en Firebase.
+
+Alternativa por cable: activa *Opciones de desarrollador → Depuración USB*, conecta el celular y ejecuta `adb install -r CineList.apk` (mismo comando de la opción A).
+
+Para mostrar el celular en la pantalla del PC (útil en la exposición) puedes usar [scrcpy](https://github.com/Genymobile/scrcpy): con el celular conectado por USB y la depuración activada, ejecuta `scrcpy`.
+
+### Opción C: ¿y en la web?
+
+Esta app **no se puede abrir en el navegador**: .NET MAUI genera apps nativas (Android, iOS, Windows, macOS), no páginas web. Lo que sí se puede ver desde el navegador:
+
+- **Los datos**: en la [consola de Firebase](https://console.firebase.google.com/) → proyecto `cinelist-7a4de` → *Firestore Database* → colección `movies`. Si agregas o editas una película en la app, el cambio aparece ahí.
+- **Una versión web de la app**: está planeada como trabajo futuro (React leyendo la misma colección de Firestore, con los mismos colores). Todavía no existe.
+
+Nota sobre Windows: el proyecto incluye el destino `net9.0-windows10.0.19041.0`, que solo se compila desde Windows con Visual Studio 2022 (carga de trabajo ".NET MAUI"). No se ha probado; la versión probada es la de Android.
+
+## Compilar y ejecutar en Android (referencia)
 
 Requisitos: .NET 9 SDK con la carga de trabajo `maui-android`, JDK 17 y Android SDK.
 
