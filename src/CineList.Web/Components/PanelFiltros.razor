@@ -220,7 +220,16 @@
     private async Task DeslizarNumeroAsync(int anterior)
     {
         var token = ++_tokenNumero;
+        // Con movimiento reducido el número cambia sin deslizar (y sin dígitos superpuestos)
+        if (await ReducirAsync())
+        {
+            _numeroSaliente = null;
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+        if (token != _tokenNumero) return;
         _numeroSaliente = anterior.ToString();
+        await InvokeAsync(StateHasChanged);
         _versionNumero++;
         try
         {
@@ -249,13 +258,17 @@
         try
         {
             if (!await ReducirAsync()) await Task.Delay(220);
-            await JS.InvokeVoidAsync("cinelist.cerrarPanel");
         }
-        catch (JSException) { }
-        catch (InvalidOperationException) { }
-        _fase = Fase.Cerrado;
-        _tokenNumero++;
-        StateHasChanged();
+        catch (Exception ex) when (ex is JSException or InvalidOperationException) { }
+        finally
+        {
+            // Pase lo que pase: la hoja queda cerrada y el scroll del fondo se libera
+            _fase = Fase.Cerrado;
+            _tokenNumero++;
+            try { await JS.InvokeVoidAsync("cinelist.cerrarPanel"); }
+            catch (Exception) { }
+            StateHasChanged();
+        }
         if (aplicar) Estado.AplicarCriterios(criterios);
         await OnCerrado.InvokeAsync();
     }

@@ -197,4 +197,5 @@
 @media (prefers-reduced-motion: reduce) {
     .velo, .hoja, .chip.pop, .estrella.pop, .digitos { animation: none !important; }
     .pildora, .chip, .segmento { transition: none !important; }
+    .digitos.sale { display: none; }
 }
