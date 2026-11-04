@@ -25,6 +25,7 @@ public partial class DetallePage : ContentPage
         InitializeComponent();
         BindingContext = _vm = vm;
         _vm.PropertyChanged += OnVmPropertyChanged;
+        _vm.VistaAlternada += OnVistaAlternada;
         PintarEtiqueta(_vm.Pelicula?.Vista ?? false);
         PintarFondo();
         // El desenfoque se aplica a la vista nativa en cuanto existe (Android 12+)
@@ -228,24 +229,33 @@ public partial class DetallePage : ContentPage
         {
             var vista = _vm.Pelicula?.Vista ?? false;
             if (_vistaMostrada == vista) return;
-            // Cambio de estado visible: fade + leve rebote (como en la lista)
-            if (_vistaMostrada is null || !_animada || Animaciones.ReducirMovimiento)
+            // Cambio de estado visible: la etiqueta gira y cambia a mitad del giro
+            if (_vistaMostrada is null || !_animada)
             {
                 PintarEtiqueta(vista);
                 return;
             }
-            await Etiqueta.FadeTo(0, 120, Easing.CubicOut);
-            PintarEtiqueta(vista);
-            await Task.WhenAll(Etiqueta.FadeTo(1, 150, Easing.CubicOut), Animaciones.Rebote(Etiqueta));
+            await Animaciones.GirarEtiqueta(Etiqueta, () => PintarEtiqueta(vista));
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"[DetallePage] {ex.Message}");
         }
-        finally
+    }
+
+    // Tras guardar con éxito: al pasar a VISTA, ráfaga dorada desde el centro del botón
+    private async void OnVistaAlternada(bool vista)
+    {
+        if (!vista || !_visible || Animaciones.ReducirMovimiento) return;
+        try
         {
-            Etiqueta.Opacity = 1;
-            Etiqueta.Scale = 1;
+            if (Coordenadas.EnVentana(BotonVista) is not { } boton || Coordenadas.EnVentana(CapaVuelo) is not { } capa) return;
+            var centro = new Point(boton.Center.X - capa.X, boton.Center.Y - capa.Y);
+            await Rafaga.Lanzar(CapaVuelo, centro, Rafaga.ColorAcento());
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[DetallePage] {ex.Message}");
         }
     }
 

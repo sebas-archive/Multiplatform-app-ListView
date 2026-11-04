@@ -276,6 +276,9 @@
             </Button.Shadow>
         </Button>
 
+        <!-- Capa de ráfagas (partículas al marcar vista); no recibe toques -->
+        <AbsoluteLayout x:Name="CapaRafaga" Grid.RowSpan="5" InputTransparent="True" CascadeInputTransparent="True" />
+
         <!-- Panel inferior "Filtros y orden" (velo + hoja), encima de todo -->
         <controles:PanelFiltros x:Name="PanelFiltros" Grid.RowSpan="5" />
     </Grid>

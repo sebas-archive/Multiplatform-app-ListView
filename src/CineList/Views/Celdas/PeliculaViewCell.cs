@@ -15,6 +15,9 @@ public class PeliculaViewCell : ViewCell
     private static readonly List<WeakReference<PeliculaViewCell>> Celdas = [];
     private static bool _conectada;
 
+    // Capa de la página donde salen las rafagas (la fila recorta lo que sobresale); la fija PeliculasPage
+    public static AbsoluteLayout? CapaRafaga { get; set; }
+
     private readonly PeliculasViewModel _vm;
     private readonly PosterView _poster = new() { WidthRequest = 44, HeightRequest = 64 };
     private readonly Label _titulo = new() { FontFamily = "InterSemi", FontSize = 14, LineBreakMode = LineBreakMode.TailTruncation };
@@ -170,26 +173,30 @@ public class PeliculaViewCell : ViewCell
         vm.AnimarEliminacion = AnimarEliminacionAsync;
     }
 
-    // Marcar vista/pendiente: la etiqueta cambia con fade + leve rebote
+    // Marcar vista/pendiente (ya guardado): la etiqueta gira; al pasar a VISTA, rafaga pequeña desde ella
     private static async void CambioDeEstado(Pelicula pelicula)
     {
         if (CeldaDe(pelicula) is not { } celda) return;
         try
         {
-            if (!Animaciones.ReducirMovimiento) await celda._etiqueta.FadeTo(0, 120, Easing.CubicOut);
-            celda.MostrarEstado(pelicula.Vista);
-            if (!Animaciones.ReducirMovimiento)
-                await Task.WhenAll(celda._etiqueta.FadeTo(1, 150, Easing.CubicOut), Animaciones.Rebote(celda._etiqueta));
+            var vista = pelicula.Vista;
+            var rafaga = vista ? celda.LanzarRafaga() : Task.CompletedTask;
+            await Animaciones.GirarEtiqueta(celda._etiqueta, () => celda.MostrarEstado(vista));
+            await rafaga;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[PeliculaViewCell] {ex.Message}");
         }
-        finally
-        {
-            celda._etiqueta.Opacity = 1;
-            celda._etiqueta.Scale = 1;
-        }
+    }
+
+    private Task LanzarRafaga()
+    {
+        if (Animaciones.ReducirMovimiento || CapaRafaga is not { } capa) return Task.CompletedTask;
+        if (Coordenadas.EnVentana(_etiqueta) is not { } etiqueta || Coordenadas.EnVentana(capa) is not { } origenCapa)
+            return Task.CompletedTask;
+        var centro = new Point(etiqueta.Center.X - origenCapa.X, etiqueta.Center.Y - origenCapa.Y);
+        return Rafaga.Lanzar(capa, centro, Rafaga.ColorAcento(), 6);
     }
 
     // Tras eliminar: ninguna celda (reciclada) debe quedar transparente o colapsada

@@ -18,6 +18,9 @@ public partial class DetalleViewModel(PeliculasViewModel lista, IPeliculasReposi
     [ObservableProperty] private Pelicula? _pelicula;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(NoOcupado))] private bool _ocupado;
 
+    // Se dispara solo tras guardar con éxito el cambio de estado (true = ahora está vista)
+    public event Action<bool>? VistaAlternada;
+
     public string Id { get; private set; } = "";
     public bool NoOcupado => !Ocupado;
 
@@ -89,6 +92,7 @@ public partial class DetalleViewModel(PeliculasViewModel lista, IPeliculasReposi
             await repositorio.ActualizarAsync(copia);
             lista.Upsert(copia);
             Pelicula = copia;
+            VistaAlternada?.Invoke(copia.Vista);
         }
         catch (Exception ex)
         {

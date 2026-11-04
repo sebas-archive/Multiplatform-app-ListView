@@ -120,6 +120,7 @@
 
                     <VerticalStackLayout x:Name="Botones" Spacing="12" Opacity="0">
                         <Button
+                            x:Name="BotonVista"
                             Text="{Binding TextoBotonVista}"
                             Style="{StaticResource BotonPrimario}"
                             IsEnabled="{Binding NoOcupado}"

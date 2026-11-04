@@ -231,6 +231,42 @@ public static class Animaciones
             v.FadeTo(1, Larga, Easing.CubicOut));
     }
 
+    // Giro de la etiqueta VISTA/PENDIENTE: RotationY 0 -> 90, se cambia el texto y 90 -> 0 con leve rebote.
+    // Si ya hay un giro en esa etiqueta se corta y el nuevo lleva directo al estado final.
+    // Con reducir movimiento solo se cambia el texto.
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<VisualElement, object> GirosEtiqueta = new();
+
+    public static async Task GirarEtiqueta(VisualElement etiqueta, Action cambiarTexto)
+    {
+        if (ReducirMovimiento)
+        {
+            cambiarTexto();
+            return;
+        }
+        var propio = new object();
+        GirosEtiqueta.AddOrUpdate(etiqueta, propio); // invalida el giro anterior
+        etiqueta.AbortAnimation("RotateYTo");
+        etiqueta.RotationY = 0;
+        bool Vigente() => GirosEtiqueta.TryGetValue(etiqueta, out var actual) && ReferenceEquals(actual, propio);
+        try
+        {
+            await etiqueta.RotateYTo(90, Corta, Easing.CubicIn);
+            if (!Vigente()) return;
+            cambiarTexto();
+            await etiqueta.RotateYTo(-6, 110, Easing.CubicOut); // pasa un poco de 0 y vuelve
+            if (!Vigente()) return;
+            await etiqueta.RotateYTo(0, 60, Easing.CubicOut);
+        }
+        finally
+        {
+            if (Vigente())
+            {
+                GirosEtiqueta.Remove(etiqueta);
+                etiqueta.RotationY = 0;
+            }
+        }
+    }
+
     // Cambio de etiqueta: leve rebote
     public static async Task Rebote(VisualElement v)
     {

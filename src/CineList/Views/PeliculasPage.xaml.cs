@@ -97,12 +97,14 @@ public partial class PeliculasPage : ContentPage
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+        PeliculaViewCell.CapaRafaga = null;
         _vm.PropertyChanged -= OnVmPropertyChanged; // evita retener la página desde el VM singleton
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        PeliculaViewCell.CapaRafaga = CapaRafaga;
         // Estado inicial sin animación (p. ej. filtros guardados al abrir la app)
         _hayFiltros = _vm.HayFiltrosActivos;
         _vm.PropertyChanged -= OnVmPropertyChanged;
