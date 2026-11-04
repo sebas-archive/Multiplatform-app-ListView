@@ -130,18 +130,26 @@ Los pósters se guardan como JPEG en base64 dentro del documento (lado mayor 600
 | 1. Modelo | [`src/CineList.Core/Models/Pelicula.cs`](src/CineList.Core/Models/Pelicula.cs) |
 | 2. Celda personalizada (`ViewCell`) | [`src/CineList/Views/Celdas/PeliculaViewCell.cs`](src/CineList/Views/Celdas/PeliculaViewCell.cs) |
 | 3. Vista con el `ListView` | [`src/CineList/Views/PeliculasPage.xaml`](src/CineList/Views/PeliculasPage.xaml) |
-| 4. Evento de selección `OnPeliculaTapped` (`ItemTapped`) | [`src/CineList/Views/PeliculasPage.xaml.cs`](src/CineList/Views/PeliculasPage.xaml.cs#L136) |
+| 4. Evento de selección `OnPeliculaTapped` (`ItemTapped`) | [`src/CineList/Views/PeliculasPage.xaml.cs`](src/CineList/Views/PeliculasPage.xaml.cs#L138) |
 
 ## Funciones
 
-- Lista de películas agrupada por género, con encabezados de grupo
+- Lista de películas agrupada por género, con encabezados de grupo (solo con el orden Género; con los demás órdenes la lista es plana)
 - Búsqueda sin distinguir mayúsculas ni tildes (título y director)
 - Chips de filtro: todas, vistas y pendientes
+- Panel "Filtros y orden" (hoja inferior con el botón Filtros): filtro por género (selección múltiple), por década (Todas, Antes de 1980, 1980s, 1990s, 2000s, 2010s, 2020s) y por calificación mínima; orden por Género, Título, Año, Calificación o Recientes. El botón "Ver N películas" se actualiza en vivo y "Limpiar" restablece todo
+- Insignia con el número de filtros activos en el botón Filtros y línea "Activos:" con el resumen; si no hay resultados se ofrece "Limpiar filtros"
+- Los filtros y el orden se recuerdan entre aperturas de la app (el texto de búsqueda no)
 - Acciones contextuales con pulsación larga (marcar como vista o pendiente, eliminar)
 - Pull-to-refresh
 - Calificación con estrellas
 - Fotos de póster desde la cámara o la galería, reducidas antes de guardarse
 - Detalle, alta y edición de películas
 - Temas claro y oscuro: el primer arranque sigue al sistema; un botón permite alternarlo y la elección se recuerda
-- Animaciones breves (se omiten las decorativas si el sistema pide reducir movimiento)
+- Animaciones breves (se omiten las decorativas si el sistema pide reducir movimiento):
+  - el póster vuela desde la lista hasta el detalle
+  - el detalle usa el póster desenfocado como fondo (el desenfoque requiere Android 12 o superior) con efecto parallax al desplazar
+  - las estrellas se llenan una a una
+  - al marcar una película como vista o pendiente la etiqueta gira, y al pasar a vista sale una pequeña ráfaga dorada
+  - el panel de filtros sube con rebote y los chips hacen un pequeño pop al seleccionarse
 - Estados de carga, vacío y error con "Reintentar" cuando no hay conexión

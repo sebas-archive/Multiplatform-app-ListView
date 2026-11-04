@@ -138,7 +138,8 @@ public class PeliculaViewCell : ViewCell
         _accionEstado.Text = vista ? "Marcar pendiente" : "Marcar vista";
     }
 
-    // Las celdas se reciclan: una animación de borrado no debe dejar la fila vacía
+    // La lista usa RetainElement (no recicla celdas), pero se restablece por defensa: una animación de borrado
+    // cancelada o interrumpida no debe dejar la fila vacía
     private void Restablecer()
     {
         View.CancelAnimations();
@@ -194,7 +195,7 @@ public class PeliculaViewCell : ViewCell
     private Task LanzarRafaga() =>
         CapaRafaga is { } capa ? Rafaga.Desde(_etiqueta, capa, Rafaga.PuntoOrigen.Centro, 6, 90, 270) : Task.CompletedTask;
 
-    // Tras eliminar: ninguna celda (reciclada) debe quedar transparente o colapsada
+    // Tras eliminar: ninguna celda (aunque la lista use RetainElement, por defensa) debe quedar transparente o colapsada
     private static void RestablecerCeldasDe(Pelicula pelicula)
     {
         Celdas.RemoveAll(w => !w.TryGetTarget(out _));
