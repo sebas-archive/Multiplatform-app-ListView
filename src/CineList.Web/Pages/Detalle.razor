@@ -131,10 +131,13 @@
     private bool _confirmarEliminar;
     private bool _parallaxActivo;
     private bool _desechada;
+    private bool _vinoDeLista; // llegó desde la lista en la app: Volver retrocede en el historial
 
     protected override async Task OnInitializedAsync()
     {
         Estado.Cambio += AlCambiar;
+        _vinoDeLista = Estado.VinoDeLista;
+        Estado.VinoDeLista = false;
         // Carga directa o recarga en /pelicula/{id}: primero se descarga la lista (con esqueleto)
         Sincronizar();
         if (!Estado.Cargada) await Estado.IniciarAsync();
@@ -252,18 +255,32 @@
     {
         if (_saliendo) return;
         _saliendo = true;
-        var conTransicion = false;
+        var resultado = "no";
         if (_pelicula is not null)
         {
             try
             {
-                conTransicion = await JS.InvokeAsync<bool>("cinelist.volverConTransicion",
-                    _marco, "/", TransicionPoster.IdSeguro(_pelicula.Id));
+                resultado = await JS.InvokeAsync<string>("cinelist.volverConTransicion",
+                    _marco, "/", TransicionPoster.IdSeguro(_pelicula.Id), _vinoDeLista);
             }
             catch (JSException ex) { Console.WriteLine($"[Detalle] {ex.Message}"); }
             catch (JSDisconnectedException) { }
         }
-        if (!conTransicion && !_desechada) Navegacion.NavigateTo("");
+        if (resultado == "ignorada") { _saliendo = false; return; } // había otra transición en curso: no se hizo nada
+        if (resultado == "ok" || _desechada) return;
+        await IrAListaAsync();
+    }
+
+    // Sin transición: si vino de la lista se retrocede en el historial; con carga directa se va a "/"
+    private async Task IrAListaAsync()
+    {
+        if (_vinoDeLista)
+        {
+            try { await JS.InvokeVoidAsync("history.back"); return; }
+            catch (JSException) { }
+            catch (JSDisconnectedException) { return; }
+        }
+        Navegacion.NavigateTo("");
     }
 
     private void IrALista() => Navegacion.NavigateTo("");

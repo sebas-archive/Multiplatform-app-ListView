@@ -81,10 +81,11 @@
         _abriendo = true;
         var url = $"pelicula/{Uri.EscapeDataString(Pelicula.Id)}";
         var conTransicion = false;
+        Estado.VinoDeLista = true; // el detalle volverá con history.back() para no ensuciar el historial
         try
         {
-            conTransicion = await JS.InvokeAsync<bool>("cinelist.navegarConTransicion",
-                _fila, url, TransicionPoster.IdSeguro(Pelicula.Id));
+            conTransicion = await JS.InvokeAsync<string>("cinelist.navegarConTransicion",
+                _fila, url, TransicionPoster.IdSeguro(Pelicula.Id)) != "no";
         }
         catch (JSException ex) { Console.WriteLine($"[FilaPelicula] {ex.Message}"); }
         catch (JSDisconnectedException) { }

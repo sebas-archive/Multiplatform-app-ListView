@@ -29,10 +29,12 @@
 
     // Transición del póster con View Transitions: el póster de origen recibe el nombre solo para la
     // captura inicial; tras navegar, lo recibe el de destino. Así el nombre nunca está dos veces en el DOM.
-    // Devuelve false si no se puede (sin soporte o movimiento reducido): quien llama navega normal.
-    const transicionPoster = (origen, url, selectorDestino, nombre, alLlegar) => {
-        if (!document.startViewTransition || reducir() || !window.Blazor || !Blazor.navigateTo || !origen) return false;
-        if (enTransicion) return true; // doble clic durante la transición: se ignora
+    // Devuelve 'no' si no se puede (sin soporte o movimiento reducido): quien llama navega normal;
+    // 'ignorada' si ya hay otra transición en curso (no se hizo nada); 'ok' si ya se encargó de navegar.
+    // Con `atras` navega con history.back() en vez de abrir la url (así el historial no rebota).
+    const transicionPoster = (origen, url, selectorDestino, nombre, alLlegar, atras) => {
+        if (!document.startViewTransition || reducir() || !window.Blazor || !Blazor.navigateTo || !origen) return 'no';
+        if (enTransicion) return 'ignorada'; // doble clic durante la transición: se ignora
         enTransicion = true;
         const vtn = 'poster-' + nombre;
         let destino = null;
@@ -44,7 +46,7 @@
             if (navegado) return false;
             navegado = true;
             origen.style.viewTransitionName = '';
-            Blazor.navigateTo(url);
+            if (atras) history.back(); else Blazor.navigateTo(url);
             return true;
         };
         let limpio = false;
@@ -66,7 +68,7 @@
             });
         } catch {
             limpiar();
-            return false;
+            return 'no';
         }
         // Respaldo: si la captura no empieza en 400 ms (p. ej. la pestaña no está pintando) se salta la
         // transición y se navega igual; el clic nunca se pierde
@@ -77,7 +79,7 @@
             limpiar();
         }, 400);
         t.finished.catch(() => { }).finally(limpiar);
-        return true;
+        return 'ok';
     };
 
     window.cinelist = {
@@ -180,8 +182,8 @@
         },
 
         // Detalle -> lista (botón Volver): el póster regresa a su fila si está visible en la lista
-        volverConTransicion: (marco, url, nombre) =>
-            transicionPoster(marco, url, `[data-vt-fila="${nombre}"] .poster`, nombre, () => window.scrollTo(0, scrollLista)),
+        volverConTransicion: (marco, url, nombre, atras) =>
+            transicionPoster(marco, url, `[data-vt-fila="${nombre}"] .poster`, nombre, () => window.scrollTo(0, scrollLista), atras),
 
         // Parallax del detalle: el póster baja un poco (máx. 16 px) y se atenúa; el fondo va más lento
         // que el contenido. Un solo listener pasivo, a lo sumo una actualización por cuadro.

@@ -52,6 +52,9 @@ public class EstadoLista(IPeliculasRepository repositorio, AlmacenLocal almacen,
     /// <summary>La página conecta aquí la espera del desvanecimiento (120 ms) antes de reconstruir.</summary>
     public Func<Task>? AnimarSalidaLista { get; set; }
 
+    /// <summary>La navegación al detalle partió de la lista dentro de la app (Volver usa history.back()).</summary>
+    public bool VinoDeLista { get; set; }
+
     public bool Agrupado => Resultado.Agrupado;
     public bool Vacia => Cargada && Error is null && _todas.Count == 0;
     public bool SinResultados => _todas.Count > 0 && Resultado.Total == 0;

@@ -165,6 +165,10 @@
     }
 </div>
 
+@* Cambios sin guardar: atrás del navegador o un enlace interno piden confirmación; cerrar o recargar
+   la pestaña usa el aviso del propio navegador *@
+<NavigationLock OnBeforeInternalNavigation="AntesDeNavegar" ConfirmExternalNavigation="@(HayCambios && !_saliendo && !_guardando)" />
+
 <Dialogo Visible="_confirmarDescarte"
          Titulo="Descartar cambios"
          Texto="¿Salir sin guardar?"
@@ -172,7 +176,7 @@
          TextoCancelar="Seguir editando"
          Peligro="true"
          OnConfirmar="Descartar"
-         OnCancelar="() => _confirmarDescarte = false" />
+         OnCancelar="CancelarDescarte" />
 
 @code {
     private const long MaximoArchivo = 25L * 1024 * 1024;
@@ -423,10 +427,32 @@
         else Salir();
     }
 
+    private string? _destinoPendiente; // adónde iba el usuario cuando se detuvo la navegación
+
+    private async Task AntesDeNavegar(LocationChangingContext contexto)
+    {
+        if (_saliendo || _guardando || !HayCambios) return;
+        contexto.PreventNavigation();
+        _destinoPendiente = contexto.TargetLocation;
+        _confirmarDescarte = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void CancelarDescarte()
+    {
+        _confirmarDescarte = false;
+        _destinoPendiente = null;
+    }
+
     private void Descartar()
     {
         _confirmarDescarte = false;
-        Salir();
+        var destino = _destinoPendiente;
+        _destinoPendiente = null;
+        if (destino is null) { Salir(); return; }
+        if (_saliendo) return;
+        _saliendo = true;
+        Navegacion.NavigateTo(destino);
     }
 
     private void Salir()
