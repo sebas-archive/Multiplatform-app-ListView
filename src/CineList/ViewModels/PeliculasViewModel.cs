@@ -12,8 +12,19 @@ namespace CineList.ViewModels;
 
 // Estado de la lista de películas. Se registra como singleton: detalle y formulario
 // usan Buscar/Upsert/Quitar para mantener la lista al día sin volver a descargarla.
-public partial class PeliculasViewModel(IPeliculasRepository repositorio, FiltrosGuardados guardados) : ObservableObject
+public partial class PeliculasViewModel : ObservableObject
 {
+    private readonly IPeliculasRepository repositorio;
+    private readonly FiltrosGuardados guardados;
+
+    public PeliculasViewModel(IPeliculasRepository repositorio, FiltrosGuardados guardados)
+    {
+        this.repositorio = repositorio;
+        this.guardados = guardados;
+        _criterios = guardados.Cargar(); // una sola lectura: criterios y estado salen del mismo valor
+        _estado = _criterios.Estado;
+    }
+
     private const int MaxFilasAnimadas = 10;
 
     private List<Pelicula> _todas = [];
@@ -28,10 +39,10 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio, Filtro
 
     // Criterios vigentes (filtros y orden guardados + texto y estado). Texto y Estado se sincronizan
     // desde TextoBusqueda y Estado, que son los que enlaza la página.
-    private CriteriosFiltro _criterios = guardados.Cargar();
+    private CriteriosFiltro _criterios;
 
     [ObservableProperty] private string _textoBusqueda = "";
-    [ObservableProperty] private FiltroEstado _estado = guardados.Cargar().Estado;
+    [ObservableProperty] private FiltroEstado _estado;
     [ObservableProperty] private bool _cargando;
     [ObservableProperty] private bool _refrescando;
     [ObservableProperty] private string? _error;
@@ -116,13 +127,31 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio, Filtro
     private void LimpiarFiltros() =>
         AplicarCriterios(CriteriosFiltro.Vacio with { Texto = TextoBusqueda });
 
+    // Últimos valores notificados: solo se avisa de lo que cambió (la página anima con esos avisos)
+    private bool _agrupadoNotificado = true;
+    private int _activosNotificados;
+    private string _textoActivosNotificado = "";
+
     private void NotificarCriterios()
     {
         OnPropertyChanged(nameof(Criterios));
-        OnPropertyChanged(nameof(Agrupado));
-        OnPropertyChanged(nameof(FiltrosActivos));
-        OnPropertyChanged(nameof(TextoActivos));
-        OnPropertyChanged(nameof(HayFiltrosActivos));
+        if (Agrupado != _agrupadoNotificado)
+        {
+            _agrupadoNotificado = Agrupado;
+            OnPropertyChanged(nameof(Agrupado));
+        }
+        if (FiltrosActivos != _activosNotificados)
+        {
+            var habia = _activosNotificados > 0;
+            _activosNotificados = FiltrosActivos;
+            OnPropertyChanged(nameof(FiltrosActivos));
+            if (habia != HayFiltrosActivos) OnPropertyChanged(nameof(HayFiltrosActivos));
+        }
+        if (TextoActivos != _textoActivosNotificado)
+        {
+            _textoActivosNotificado = TextoActivos;
+            OnPropertyChanged(nameof(TextoActivos));
+        }
         OnPropertyChanged(nameof(SinResultadosConFiltros));
         OnPropertyChanged(nameof(SinResultadosSimple));
     }

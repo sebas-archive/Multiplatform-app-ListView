@@ -130,7 +130,7 @@ Los pósters se guardan como JPEG en base64 dentro del documento (lado mayor 600
 | 1. Modelo | [`src/CineList.Core/Models/Pelicula.cs`](src/CineList.Core/Models/Pelicula.cs) |
 | 2. Celda personalizada (`ViewCell`) | [`src/CineList/Views/Celdas/PeliculaViewCell.cs`](src/CineList/Views/Celdas/PeliculaViewCell.cs) |
 | 3. Vista con el `ListView` | [`src/CineList/Views/PeliculasPage.xaml`](src/CineList/Views/PeliculasPage.xaml) |
-| 4. Evento de selección `OnPeliculaTapped` (`ItemTapped`) | [`src/CineList/Views/PeliculasPage.xaml.cs`](src/CineList/Views/PeliculasPage.xaml.cs#L96) |
+| 4. Evento de selección `OnPeliculaTapped` (`ItemTapped`) | [`src/CineList/Views/PeliculasPage.xaml.cs`](src/CineList/Views/PeliculasPage.xaml.cs#L113) |
 
 ## Funciones
 

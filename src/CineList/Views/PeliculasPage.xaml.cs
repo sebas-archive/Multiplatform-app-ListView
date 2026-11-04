@@ -20,20 +20,23 @@ public partial class PeliculasPage : ContentPage
         BindingContext = _vm = vm;
         _tema = tema;
         BotonTema.Text = IconoTema();
-        _vm.PropertyChanged += OnVmPropertyChanged;
     }
 
     // Insignia del botón Filtros: aparece con escala al pasar de 0 a 1 o más criterios;
     // la línea "Activos" entra deslizando 12 px con fade
     private async void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(PeliculasViewModel.FiltrosActivos))
+            SemanticProperties.SetDescription(BotonFiltros,
+                _vm.FiltrosActivos > 0 ? $"Filtros y orden, {_vm.FiltrosActivos} activos" : "Filtros y orden");
         if (e.PropertyName != nameof(PeliculasViewModel.HayFiltrosActivos)) return;
+        // Solo la transición real de "sin filtros" a "con filtros" anima
+        var antes = _hayFiltros;
+        _hayFiltros = _vm.HayFiltrosActivos;
+        if (antes || !_hayFiltros) return;
         try
         {
-            if (_vm.HayFiltrosActivos)
-            {
-                await Task.WhenAll(AparecerLineaActivos(), Animaciones.AparecerEscala(InsigniaFiltros));
-            }
+            await Task.WhenAll(AparecerLineaActivos(), Animaciones.AparecerEscala(InsigniaFiltros));
         }
         catch (Exception ex)
         {
@@ -66,9 +69,23 @@ public partial class PeliculasPage : ContentPage
 
     private bool _fabAnimado;
 
+    private bool _hayFiltros;
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _vm.PropertyChanged -= OnVmPropertyChanged; // evita retener la página desde el VM singleton
+    }
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        // Estado inicial sin animación (p. ej. filtros guardados al abrir la app)
+        _hayFiltros = _vm.HayFiltrosActivos;
+        _vm.PropertyChanged -= OnVmPropertyChanged;
+        _vm.PropertyChanged += OnVmPropertyChanged;
+        SemanticProperties.SetDescription(BotonFiltros,
+            _vm.FiltrosActivos > 0 ? $"Filtros y orden, {_vm.FiltrosActivos} activos" : "Filtros y orden");
         try
         {
             if (!_vm.Cargada) _ = _vm.CargarCommand.ExecuteAsync(null);
