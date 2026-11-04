@@ -103,6 +103,29 @@
             hoja.addEventListener('keydown', hoja._trampa);
         },
         cerrarPanel: () => document.documentElement.classList.remove('sin-scroll'),
+        // Reduce una imagen subida: decodifica respetando la orientación EXIF, escala (lado mayor = ladoMax,
+        // sin agrandar) y exporta JPEG. Devuelve el base64 sin prefijo, o null si el archivo no es una imagen.
+        reducirImagen: async (bytes, ladoMax, calidad) => {
+            let mapa;
+            try {
+                mapa = await createImageBitmap(new Blob([bytes]), { imageOrientation: 'from-image' });
+            } catch { return null; }
+            try {
+                const mayor = Math.max(mapa.width, mapa.height);
+                const factor = mayor > ladoMax ? ladoMax / mayor : 1;
+                const ancho = Math.max(1, Math.round(mapa.width * factor));
+                const alto = Math.max(1, Math.round(mapa.height * factor));
+                const lienzo = document.createElement('canvas');
+                lienzo.width = ancho;
+                lienzo.height = alto;
+                const ctx = lienzo.getContext('2d');
+                ctx.fillStyle = '#ffffff'; // PNG con transparencia: fondo blanco en vez de negro
+                ctx.fillRect(0, 0, ancho, alto);
+                ctx.drawImage(mapa, 0, 0, ancho, alto);
+                const url = lienzo.toDataURL('image/jpeg', calidad);
+                return url.substring(url.indexOf(',') + 1);
+            } finally { mapa.close(); }
+        },
         enLinea: () => navigator.onLine !== false,
         reducirMovimiento: reducir,
 

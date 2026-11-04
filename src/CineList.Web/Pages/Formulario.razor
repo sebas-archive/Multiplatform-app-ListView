@@ -1,0 +1,446 @@
+@page "/nueva"
+@page "/editar/{Id}"
+@using CineList.Core.Firestore
+@using CineList.Core.Formulario
+@using CineList.Core.Poster
+@implements IAsyncDisposable
+@inject EstadoLista Estado
+@inject IPeliculasRepository Repositorio
+@inject NavigationManager Navegacion
+@inject IJSRuntime JS
+
+<PageTitle>@TituloPagina · CineList</PageTitle>
+
+@* Formulario de agregar/editar (como FormularioPage del APK). En edición trabaja con un clon:
+   nunca se modifica la instancia de la lista; al guardar se reemplaza con Upsert. *@
+<div class="formulario">
+    <header class="barra-form">
+        <button type="button" class="boton-redondo" aria-label="Cerrar formulario" disabled="@_guardando" @onclick="Cancelar">
+            <span class="icono" aria-hidden="true">&#xe5cd;</span>
+        </button>
+        <h1 class="titulo-form">@TituloPagina</h1>
+    </header>
+
+    @if (_cargando)
+    {
+        <div class="esqueleto" aria-busy="true" aria-label="Cargando película">
+            <div class="caja" style="width: 120px; height: 176px"></div>
+            <div class="caja" style="width: 100%; height: 48px"></div>
+            <div class="caja" style="width: 100%; height: 48px"></div>
+        </div>
+    }
+    else if (_errorCarga is not null)
+    {
+        <div class="panel-estado" role="alert">
+            <p class="mensaje">@_errorCarga</p>
+            <div class="botones-estado">
+                <button type="button" class="boton secundario" @onclick="ReintentarAsync">Reintentar</button>
+                <button type="button" class="boton primario" @onclick="IrALista">Volver</button>
+            </div>
+        </div>
+    }
+    else if (_noEncontrada)
+    {
+        <div class="panel-estado" role="alert">
+            <span class="icono icono-estado acento" aria-hidden="true">&#xe404;</span>
+            <h2 class="mensaje">Película no encontrada</h2>
+            <p class="nota">Esta película ya no existe</p>
+            <button type="button" class="boton primario" @onclick="IrALista">Volver</button>
+        </div>
+    }
+    else
+    {
+        <form class="campos" novalidate @onsubmit="GuardarAsync" @onsubmit:preventDefault>
+            <div class="bloque-poster">
+                <span class="rotulo">Póster</span>
+                <div class="poster-fila">
+                    <div class="marco-poster" aria-busy="@_procesandoFoto">
+                        <PosterImagen Pelicula="_vistaPrevia" Clase="poster-previa" TamanoIniciales="40" />
+                        @if (_procesandoFoto)
+                        {
+                            <div class="procesando" role="status" aria-label="Procesando imagen"><span class="rueda"></span></div>
+                        }
+                    </div>
+                    <div class="poster-botones">
+                        <label class="boton secundario subir @(Libre ? "" : "inactivo")">
+                            <span>@(HayPoster ? "Cambiar imagen" : "Subir imagen")</span>
+                            <InputFile @key="_claveArchivo" class="archivo" accept="image/*" disabled="@(!Libre)" OnChange="ElegirArchivoAsync" />
+                        </label>
+                        @if (HayPoster)
+                        {
+                            <button type="button" class="boton peligro" disabled="@(!Libre)" @onclick="QuitarFoto">Quitar</button>
+                        }
+                        <p class="nota-poster">Se reduce a 600 px antes de guardarse</p>
+                    </div>
+                </div>
+                @if (_errorFoto is not null)
+                {
+                    <p class="error-foto" role="alert">@_errorFoto</p>
+                }
+            </div>
+
+            <label class="campo">
+                <span class="rotulo">Título</span>
+                <input class="entrada" type="text" maxlength="120" placeholder="Ej.: El viaje de Chihiro" autocomplete="off"
+                       @bind="Titulo" @bind:event="oninput" disabled="@_guardando" @ref="_campoTitulo" />
+            </label>
+
+            <label class="campo">
+                <span class="rotulo">Director</span>
+                <input class="entrada" type="text" maxlength="80" placeholder="Ej.: Hayao Miyazaki" autocomplete="off"
+                       @bind="Director" @bind:event="oninput" disabled="@_guardando" />
+            </label>
+
+            <div class="fila-doble">
+                <label class="campo">
+                    <span class="rotulo">Año</span>
+                    <input class="entrada" type="text" inputmode="numeric" maxlength="4" placeholder="2001" autocomplete="off"
+                           @bind="Anio" @bind:event="oninput" disabled="@_guardando" />
+                </label>
+                <label class="campo">
+                    <span class="rotulo">Duración (min)</span>
+                    <input class="entrada" type="text" inputmode="numeric" maxlength="3" placeholder="125" autocomplete="off"
+                           @bind="Duracion" @bind:event="oninput" disabled="@_guardando" />
+                </label>
+            </div>
+
+            <label class="campo">
+                <span class="rotulo">Género</span>
+                <select class="entrada" @bind="Genero" disabled="@_guardando">
+                    <option value="">Elige un género</option>
+                    @foreach (var g in _generos)
+                    {
+                        <option value="@g">@g</option>
+                    }
+                </select>
+            </label>
+
+            <label class="campo">
+                <span class="rotulo">Sinopsis</span>
+                <textarea class="entrada" rows="5" maxlength="1000" placeholder="¿De qué trata?"
+                          @bind="Sinopsis" @bind:event="oninput" disabled="@_guardando"></textarea>
+            </label>
+
+            <div class="tarjeta">
+                <div class="tarjeta-texto">
+                    <span class="tarjeta-titulo">Ya la vi</span>
+                    <span class="nota">Aparecerá como VISTA en la lista</span>
+                </div>
+                <button type="button" class="interruptor @(_vista ? "activo" : "")" role="switch" aria-checked="@(_vista ? "true" : "false")"
+                        aria-label="Ya la vi" disabled="@_guardando" @onclick="() => _vista = !_vista">
+                    <span class="perilla"></span>
+                </button>
+            </div>
+
+            <div class="tarjeta">
+                <div class="tarjeta-texto">
+                    <span class="tarjeta-titulo" id="rotulo-calif">Calificación</span>
+                    <span class="nota">Toca de nuevo para quitarla</span>
+                </div>
+                <div class="estrellas-edit" role="radiogroup" aria-labelledby="rotulo-calif">
+                    @for (var i = 1; i <= 5; i++)
+                    {
+                        var n = i;
+                        <button type="button" class="estrella @(n <= _calificacion ? "llena" : "vacia")" role="radio"
+                                aria-checked="@(n == _calificacion ? "true" : "false")" aria-label="@n de 5 estrellas"
+                                disabled="@_guardando" @onclick="() => Calificar(n)">
+                            <span class="@(n <= _calificacion ? "icono-lleno" : "icono")" aria-hidden="true">&#xf09a;</span>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            @if (ErroresVisibles.Count > 0)
+            {
+                <ul class="errores @(_sacudir ? "sacude" : "")" role="alert">
+                    @foreach (var e in ErroresVisibles)
+                    {
+                        <li>@e</li>
+                    }
+                </ul>
+            }
+
+            <button type="submit" class="boton primario guardar" disabled="@(!Libre)">@(_guardando ? "Guardando..." : "Guardar")</button>
+        </form>
+    }
+</div>
+
+<Dialogo Visible="_confirmarDescarte"
+         Titulo="Descartar cambios"
+         Texto="¿Salir sin guardar?"
+         TextoConfirmar="Descartar"
+         TextoCancelar="Seguir editando"
+         Peligro="true"
+         OnConfirmar="Descartar"
+         OnCancelar="() => _confirmarDescarte = false" />
+
+@code {
+    private const long MaximoArchivo = 25L * 1024 * 1024;
+
+    [Parameter] public string? Id { get; set; }
+
+    private Pelicula? _original;
+    private DatosFormulario _inicial = DatosFormulario.Vacio;
+    private IReadOnlyList<string> _generos = Generos.Fijos;
+    private Pelicula _vistaPrevia = new();
+    private ElementReference _campoTitulo;
+    private int _claveArchivo;
+
+    private string _titulo = "", _director = "", _anio = "", _duracion = "", _sinopsis = "", _genero = "";
+    private bool _vista;
+    private int _calificacion;
+    private string? _posterBase64;
+
+    private bool _cargando, _noEncontrada, _guardando, _procesandoFoto, _saliendo, _intentoGuardar;
+    private bool _confirmarDescarte, _sacudir, _desechada, _iniciado;
+    private string? _errorCarga, _errorFoto, _errorGuardado;
+    private IReadOnlyList<string> _errores = [];
+    private string? _idCargado;
+
+    private bool EsEdicion => _original is not null;
+    private string TituloPagina => EsEdicion || !string.IsNullOrEmpty(Id) ? "Editar película" : "Nueva película";
+    private bool HayPoster => !string.IsNullOrEmpty(_posterBase64);
+    private bool Libre => !_guardando && !_procesandoFoto;
+    private bool HayCambios => Datos() != _inicial;
+
+    // Los setters mantienen la vista previa y revalidan mientras se corrige tras un intento fallido
+    private string Titulo { get => _titulo; set { _titulo = value ?? ""; if (!HayPoster) ActualizarVistaPrevia(); Revalidar(); } }
+    private string Director { get => _director; set => _director = value ?? ""; }
+    private string Anio { get => _anio; set { _anio = value ?? ""; Revalidar(); } }
+    private string Duracion { get => _duracion; set { _duracion = value ?? ""; Revalidar(); } }
+    private string Sinopsis { get => _sinopsis; set => _sinopsis = value ?? ""; }
+    private string Genero { get => _genero; set => _genero = value ?? ""; }
+
+    private IReadOnlyList<string> ErroresVisibles =>
+        _errorGuardado is null ? _errores : [.. _errores, _errorGuardado];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_iniciado && Id == _idCargado) return;
+        _iniciado = true;
+        _idCargado = Id;
+        if (string.IsNullOrEmpty(Id))
+        {
+            Cargar(DatosFormulario.Vacio);
+            return;
+        }
+        await CargarEdicionAsync();
+    }
+
+    // Carga directa o recarga en /editar/{id}: primero se descarga la lista (con esqueleto)
+    private async Task CargarEdicionAsync()
+    {
+        _errorCarga = null;
+        _noEncontrada = false;
+        if (!Estado.Cargada)
+        {
+            _cargando = true;
+            await Estado.IniciarAsync();
+            _cargando = false;
+            if (_desechada) return;
+            if (!Estado.Cargada)
+            {
+                _errorCarga = Estado.Error ?? EstadoLista.SinServidor;
+                return;
+            }
+        }
+        _original = Estado.Buscar(Id!)?.Clonar();
+        if (_original is null)
+        {
+            _noEncontrada = true;
+            return;
+        }
+        Cargar(DatosFormulario.Desde(_original));
+    }
+
+    private async Task ReintentarAsync()
+    {
+        await Estado.CargarAsync();
+        await CargarEdicionAsync();
+    }
+
+    private void Cargar(DatosFormulario d)
+    {
+        var genero = d.Genero.Trim();
+        // El género guardado puede no ser de la lista fija (p. ej. creado desde otra versión)
+        _generos = genero.Length > 0 && !Generos.Fijos.Contains(genero) ? [.. Generos.Fijos, genero] : Generos.Fijos;
+        _titulo = d.Titulo;
+        _director = d.Director;
+        _anio = d.Anio;
+        _duracion = d.Duracion;
+        _sinopsis = d.Sinopsis;
+        _genero = genero;
+        _vista = d.Vista;
+        _calificacion = d.Calificacion;
+        _posterBase64 = d.PosterBase64;
+        _inicial = Datos(); // la referencia para "hay cambios" es lo que realmente muestra el formulario
+        ActualizarVistaPrevia();
+    }
+
+    private DatosFormulario Datos() => new(_titulo, _director, _genero, _anio, _duracion, _sinopsis, _vista, _calificacion, _posterBase64);
+
+    private void ActualizarVistaPrevia() => _vistaPrevia = new Pelicula { Titulo = _titulo, PosterBase64 = _posterBase64 };
+
+    private void Revalidar()
+    {
+        if (_intentoGuardar) _errores = ValidadorPelicula.Validar(_titulo, _anio, _duracion, DateTime.Now.Year);
+    }
+
+    private void Calificar(int n)
+    {
+        if (_guardando) return;
+        _calificacion = _calificacion == n ? 0 : n;
+    }
+
+    private void QuitarFoto()
+    {
+        if (!Libre) return;
+        _posterBase64 = null;
+        _errorFoto = null;
+        ActualizarVistaPrevia();
+    }
+
+    // Póster: se lee el archivo en C#, JS lo reduce (600 px / 0.70) y si no cabe en el documento reintenta 450 px / 0.50
+    private async Task ElegirArchivoAsync(InputFileChangeEventArgs e)
+    {
+        if (!Libre) return;
+        var archivo = e.File;
+        _errorFoto = null;
+        if (archivo.Size > MaximoArchivo)
+        {
+            _errorFoto = "La imagen supera 25 MB";
+            _claveArchivo++;
+            return;
+        }
+        _procesandoFoto = true;
+        StateHasChanged();
+        try
+        {
+            byte[] bytes;
+            using (var flujo = archivo.OpenReadStream(MaximoArchivo))
+            using (var memoria = new MemoryStream())
+            {
+                await flujo.CopyToAsync(memoria);
+                bytes = memoria.ToArray();
+            }
+            var base64 = await JS.InvokeAsync<string?>("cinelist.reducirImagen", bytes, PosterPolicy.LadoMaximo, PosterPolicy.CalidadJpeg / 100.0);
+            if (base64 is null)
+            {
+                _errorFoto = "El archivo no es una imagen válida";
+                return;
+            }
+            if (!PosterPolicy.CabeEnDocumento(base64))
+            {
+                base64 = await JS.InvokeAsync<string?>("cinelist.reducirImagen", bytes, 450, 0.50);
+                if (base64 is null || !PosterPolicy.CabeEnDocumento(base64))
+                {
+                    _errorFoto = "La imagen es demasiado grande";
+                    return;
+                }
+            }
+            _posterBase64 = base64;
+            ActualizarVistaPrevia();
+        }
+        catch (IOException)
+        {
+            _errorFoto = "La imagen supera 25 MB";
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException)
+        {
+            Console.WriteLine($"[Formulario] {ex.Message}");
+            _errorFoto = "No se pudo procesar la imagen";
+        }
+        finally
+        {
+            _procesandoFoto = false;
+            _claveArchivo++; // recrea el input (ya leído): permite volver a elegir el mismo archivo
+        }
+    }
+
+    private async Task GuardarAsync()
+    {
+        if (!Libre || _saliendo) return;
+        _intentoGuardar = true;
+        _errorGuardado = null;
+        _errores = ValidadorPelicula.Validar(_titulo, _anio, _duracion, DateTime.Now.Year);
+        if (_errores.Count > 0)
+        {
+            await SacudirAsync();
+            return;
+        }
+
+        _guardando = true;
+        string destino;
+        try
+        {
+            var datos = Datos();
+            if (_original is not null)
+            {
+                var editada = datos.CrearPelicula(_original);
+                await Repositorio.ActualizarAsync(editada);
+                Estado.Upsert(editada);
+                _original = editada;
+            }
+            else
+            {
+                var creada = await Repositorio.CrearAsync(datos.CrearPelicula());
+                Estado.Upsert(creada);
+                // Ya existe en Firestore: si la navegación falla, otro "Guardar" debe actualizar, no duplicar
+                _original = creada;
+            }
+            _inicial = datos;
+            destino = $"pelicula/{Uri.EscapeDataString(_original.Id)}";
+        }
+        catch (Exception ex)
+        {
+            // Sin red o Firestore caído: el formulario conserva lo escrito
+            Console.WriteLine($"[Formulario] {ex}");
+            _errorGuardado = ex is RepositorioException r && !string.IsNullOrWhiteSpace(r.Message)
+                ? r.Message
+                : "No se pudo guardar la película";
+            _guardando = false;
+            return;
+        }
+
+        _saliendo = true;
+        // Editar vuelve al detalle; crear vuelve a la lista (la película ya está en edición por si falla)
+        var eraEdicion = !string.IsNullOrEmpty(Id);
+        Navegacion.NavigateTo(eraEdicion ? destino : "");
+    }
+
+    private async Task SacudirAsync()
+    {
+        _sacudir = false;
+        StateHasChanged();
+        await Task.Yield();
+        _sacudir = true;
+    }
+
+    private void Cancelar()
+    {
+        if (_saliendo || _guardando) return;
+        if (HayCambios) _confirmarDescarte = true;
+        else Salir();
+    }
+
+    private void Descartar()
+    {
+        _confirmarDescarte = false;
+        Salir();
+    }
+
+    private void Salir()
+    {
+        if (_saliendo) return;
+        _saliendo = true;
+        Navegacion.NavigateTo(_original is not null && !string.IsNullOrEmpty(Id) ? $"pelicula/{Uri.EscapeDataString(_original.Id)}" : "");
+    }
+
+    private void IrALista() => Navegacion.NavigateTo("");
+
+    public ValueTask DisposeAsync()
+    {
+        _desechada = true;
+        return ValueTask.CompletedTask;
+    }
+}

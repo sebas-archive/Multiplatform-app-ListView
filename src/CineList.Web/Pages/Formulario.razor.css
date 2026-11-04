@@ -1,0 +1,119 @@
+.formulario {
+    padding-bottom: 48px;
+    animation: formulario-entra 260ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+}
+@keyframes formulario-entra { from { opacity: 0; transform: translateY(24px); } }
+
+.barra-form { display: flex; align-items: center; gap: 12px; padding: 12px 0 8px; }
+.titulo-form { font-family: var(--fuente-titulo); font-size: 24px; font-weight: 700; }
+
+.campos { display: flex; flex-direction: column; gap: 16px; padding-top: 8px; }
+.campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.rotulo { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: var(--texto-secundario); margin-left: 2px; }
+
+.entrada {
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 14px;
+    font: inherit;
+    font-size: 16px;
+    color: var(--texto);
+    background: var(--campo);
+    border: 1px solid var(--borde-campo);
+    border-radius: 14px;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.entrada::placeholder { color: var(--texto-secundario); opacity: 0.7; }
+.entrada:focus { outline: none; border-color: var(--acento); box-shadow: 0 0 0 2px color-mix(in srgb, var(--acento) 45%, transparent); }
+.entrada:disabled { opacity: 0.6; }
+textarea.entrada { resize: vertical; min-height: 110px; line-height: 1.4; }
+select.entrada { appearance: auto; }
+.fila-doble { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* Póster */
+.bloque-poster { display: flex; flex-direction: column; gap: 8px; }
+.poster-fila { display: flex; gap: 16px; align-items: flex-start; }
+.marco-poster { position: relative; width: 120px; height: 176px; flex: none; border-radius: 8px; overflow: hidden; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); }
+::deep .poster-previa { width: 100%; height: 100%; }
+.procesando { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.5); animation: aparecer 150ms ease-out; }
+.rueda { width: 28px; height: 28px; border-radius: 50%; border: 3px solid rgba(255, 255, 255, 0.35); border-top-color: #fff; animation: gira 800ms linear infinite; }
+@keyframes gira { to { transform: rotate(360deg); } }
+@keyframes aparecer { from { opacity: 0; } }
+.poster-botones { display: flex; flex-direction: column; align-items: stretch; gap: 10px; min-width: 0; flex: 1; max-width: 220px; }
+.nota-poster { font-size: 12px; color: var(--texto-secundario); }
+.error-foto { font-size: 13px; color: var(--peligro); }
+
+/* El input real queda accesible pero invisible; la etiqueta hace de botón */
+.subir { position: relative; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; overflow: hidden; }
+.subir.inactivo { opacity: 0.6; cursor: default; }
+.subir:focus-within { outline: 2px solid var(--acento); outline-offset: 2px; }
+::deep .archivo { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 0; }
+
+/* Tarjetas (Ya la vi, Calificación) */
+.tarjeta {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 16px; background: var(--superficie); border: 1px solid var(--borde-superficie); border-radius: 16px;
+}
+.tarjeta-texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tarjeta-titulo { font-size: 15px; font-weight: 600; }
+
+.interruptor {
+    position: relative; flex: none; width: 52px; height: 30px; padding: 0; border-radius: 15px;
+    background: var(--campo); border: 1px solid var(--texto-secundario);
+    transition: background-color 150ms ease, border-color 150ms ease;
+}
+.interruptor .perilla {
+    position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--texto-secundario); transition: transform 150ms ease, background-color 150ms ease;
+}
+.interruptor.activo { background: var(--acento); border-color: var(--acento); }
+.interruptor.activo .perilla { transform: translateX(22px); background: var(--acento-texto); }
+.interruptor:focus-visible, .estrella:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+.estrellas-edit { display: flex; gap: 0; flex: none; }
+.estrella { padding: 4px 3px; border: 0; background: transparent; color: var(--acento); font-size: 30px; line-height: 1; transition: transform 150ms ease; }
+.estrella:hover:not(:disabled) { transform: scale(1.12); }
+.estrella.vacia { opacity: 0.45; }
+.estrella .icono, .estrella .icono-lleno { display: block; }
+
+/* Errores arriba del botón */
+.errores {
+    list-style: none; margin: 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px;
+    border: 1px solid var(--peligro); border-radius: 14px; color: var(--peligro); font-size: 14px;
+    background: color-mix(in srgb, var(--peligro) 10%, transparent);
+}
+.errores.sacude { animation: sacude 320ms ease-in-out; }
+@keyframes sacude { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+
+.guardar { width: 100%; margin-top: 4px; }
+
+.boton {
+    min-height: 48px; padding: 0 20px; border-radius: 14px; font-size: 15px; font-weight: 600;
+    border: 1px solid transparent; transition: transform 150ms ease, opacity 150ms ease;
+}
+.boton:active:not(:disabled) { transform: scale(0.98); }
+.boton:disabled { opacity: 0.6; cursor: default; }
+.boton:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.primario { background: var(--acento); color: var(--acento-texto); }
+.secundario { background: var(--campo); border-color: var(--borde-campo); color: var(--texto); }
+.peligro { background: transparent; border-color: var(--peligro); color: var(--peligro); }
+
+/* Carga directa y estados */
+.esqueleto { display: flex; flex-direction: column; gap: 14px; padding-top: 8px; }
+.caja {
+    border-radius: 8px; max-width: 100%;
+    background: linear-gradient(90deg,
+        color-mix(in srgb, var(--texto-secundario) 18%, transparent) 0%,
+        color-mix(in srgb, var(--texto-secundario) 34%, transparent) 50%,
+        color-mix(in srgb, var(--texto-secundario) 18%, transparent) 100%);
+    background-size: 200% 100%; animation: brillo 1.2s linear infinite;
+}
+@keyframes brillo { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.panel-estado { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 64px 24px 0; animation: aparecer 220ms ease-out; }
+.panel-estado .boton { margin-top: 8px; }
+.botones-estado { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.icono-estado { font-size: 56px; }
+.acento { color: var(--acento); }
+.mensaje { font-size: 17px; font-weight: 600; max-width: 420px; }
+.nota { font-size: 12px; color: var(--texto-secundario); }
+.panel-estado .nota { font-size: 13px; }
