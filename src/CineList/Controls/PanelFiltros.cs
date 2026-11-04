@@ -396,7 +396,7 @@ public class PanelFiltros : Grid
         _velo.Opacity = OpacidadVelo * t;
         var tema = Application.Current?.RequestedTheme == AppTheme.Dark ? "Oscuro" : "Claro";
         var fondo = Recurso("Fondo" + tema);
-        BarraEstado.FondoSistema(Mezclar(fondo, Colors.Black, OpacidadVelo * t), Mezclar(fondo, Recurso("Superficie" + tema), t));
+        BarraEstado.FondoSistema(Mezclar(fondo, Colors.Black, OpacidadVelo * t), Mezclar(fondo, Recurso("Superficie" + tema), t), t);
     }
 
     private Task AnimarVelo(double hasta, uint duracion, Easing easing)

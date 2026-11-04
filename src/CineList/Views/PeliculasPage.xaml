@@ -221,7 +221,7 @@
                    TextColor="{AppThemeBinding Light={StaticResource TextoSecundarioClaro}, Dark={StaticResource TextoSecundarioOscuro}}" />
             <Label Text="Ninguna película coincide con los filtros" Style="{StaticResource TextoSecundario}" HorizontalTextAlignment="Center" />
             <Button Text="Limpiar filtros" Style="{StaticResource BotonSecundario}" Margin="0,8,0,0"
-                    HorizontalOptions="Center" Command="{Binding LimpiarFiltrosCommand}" />
+                    IsVisible="{Binding PuedeLimpiarFiltros}" HorizontalOptions="Center" Command="{Binding LimpiarFiltrosCommand}" />
         </controles:PanelEstado>
 
         <!-- Error de red o del servidor -->

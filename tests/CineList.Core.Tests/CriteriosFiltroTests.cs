@@ -18,6 +18,29 @@ public class CriteriosFiltroTests
     }
 
     [Fact]
+    public void TieneFiltrosDeContenido()
+    {
+        Assert.False(CriteriosFiltro.Vacio.TieneFiltrosDeContenido);
+        Assert.False((CriteriosFiltro.Vacio with { Texto = "a", Estado = FiltroEstado.Vistas, Orden = OrdenPeliculas.Anio }).TieneFiltrosDeContenido);
+        Assert.True((CriteriosFiltro.Vacio with { Generos = new HashSet<string> { "Drama" } }).TieneFiltrosDeContenido);
+        Assert.True((CriteriosFiltro.Vacio with { Decada = Decada.D1990s }).TieneFiltrosDeContenido);
+        Assert.True((CriteriosFiltro.Vacio with { CalificacionMinima = 1 }).TieneFiltrosDeContenido);
+    }
+
+    [Fact]
+    public void SinFiltrosDeContenido_ConservaTextoEstadoYOrden()
+    {
+        var r = Completo("hola").SinFiltrosDeContenido();
+        Assert.False(r.TieneFiltrosDeContenido);
+        Assert.Equal("hola", r.Texto);
+        Assert.Equal(FiltroEstado.Vistas, r.Estado);
+        Assert.Equal(OrdenPeliculas.Anio, r.Orden);
+        Assert.Empty(r.Generos);
+        Assert.Equal(Decada.Todas, r.Decada);
+        Assert.Equal(0, r.CalificacionMinima);
+    }
+
+    [Fact]
     public void Igualdad_PorContenidoDeGeneros()
     {
         var a = Completo();

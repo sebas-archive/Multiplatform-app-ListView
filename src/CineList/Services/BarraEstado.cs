@@ -23,7 +23,7 @@ public static class BarraEstado
 
     // Con el panel de filtros abierto, la barra de estado sigue al velo y la de navegación a la hoja,
     // para que no queden franjas sin oscurecer; con null se vuelve a los colores del tema
-    public static void FondoSistema(Color? arriba, Color? abajo)
+    public static void FondoSistema(Color? arriba, Color? abajo, double nivelVelo = 0)
     {
 #if ANDROID
         if (Platform.CurrentActivity?.Window is not { } ventana) return;
@@ -36,6 +36,10 @@ public static class BarraEstado
         ventana.SetStatusBarColor(arriba.ToPlatform());
         ventana.SetNavigationBarColor(abajo.ToPlatform());
 #pragma warning restore CA1422
+        // En el tema claro, con el velo oscuro encima los íconos oscuros dejan de leerse: pasan a claros
+        if (Application.Current?.RequestedTheme != AppTheme.Dark
+            && AndroidX.Core.View.WindowCompat.GetInsetsController(ventana, ventana.DecorView) is { } controlador)
+            controlador.AppearanceLightStatusBars = nivelVelo <= 0.5;
 #endif
     }
 

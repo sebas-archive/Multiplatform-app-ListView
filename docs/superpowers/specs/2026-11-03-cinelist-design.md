@@ -87,7 +87,7 @@ Firestore limita cada documento a 1 MB → el póster se redimensiona (lado mayo
   - `IsGroupingEnabled` con encabezado por género (`GroupHeaderTemplate`).
   - `IsPullToRefreshEnabled` → recarga desde Firestore.
   - `Footer`: "N películas · M vistas".
-  - `CachingStrategy="RecycleElement"`.
+  - `CachingStrategy="RecycleElement"`. (Actualización fase 2A: ahora se usa `RetainElement`; `RecycleElement` perdía la última fila en las reconstrucciones de grupos.)
   - Evento **`ItemTapped`** → navega al detalle y limpia la selección.
 - Arriba: título grande, botón de modo claro/oscuro, `SearchBar` (título o director), chips Todas / Vistas / Pendientes.
 - Botón flotante **+** → formulario nuevo.

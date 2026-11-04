@@ -98,6 +98,9 @@ public partial class PeliculasPage : ContentPage
     {
         base.OnDisappearing();
         PeliculaViewCell.CapaRafaga = null;
+        _vm.AnimarSalidaLista = null;
+        _vm.RestaurarLista = null;
+        ListaPeliculas.Opacity = 1;
         _vm.PropertyChanged -= OnVmPropertyChanged; // evita retener la página desde el VM singleton
     }
 
@@ -105,6 +108,8 @@ public partial class PeliculasPage : ContentPage
     {
         base.OnAppearing();
         PeliculaViewCell.CapaRafaga = CapaRafaga;
+        _vm.AnimarSalidaLista = AnimarSalidaListaAsync;
+        _vm.RestaurarLista = () => ListaPeliculas.Opacity = 1;
         // Estado inicial sin animación (p. ej. filtros guardados al abrir la app)
         _hayFiltros = _vm.HayFiltrosActivos;
         _vm.PropertyChanged -= OnVmPropertyChanged;
@@ -133,6 +138,10 @@ public partial class PeliculasPage : ContentPage
             Debug.WriteLine($"[PeliculasPage] {ex.Message}");
         }
     }
+
+    // Las filas salientes se desvanecen (~120 ms) antes de reconstruir la lista; sin movimiento, no se anima
+    private Task AnimarSalidaListaAsync() =>
+        Animaciones.ReducirMovimiento ? Task.CompletedTask : ListaPeliculas.FadeTo(0, 120, Easing.CubicIn);
 
     // Evento de selección de registro (Guía 8)
     private async void OnPeliculaTapped(object sender, ItemTappedEventArgs e)

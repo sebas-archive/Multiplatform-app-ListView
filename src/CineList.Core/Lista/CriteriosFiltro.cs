@@ -36,6 +36,14 @@ public sealed record CriteriosFiltro(
         + (CalificacionMinima > 0 ? 1 : 0)
         + (Orden != OrdenPeliculas.Genero ? 1 : 0);
 
+    /// <summary>Hay géneros, década o calificación mínima activos (el orden, el texto y el estado no cuentan).</summary>
+    public bool TieneFiltrosDeContenido =>
+        Generos.Count > 0 || Decada != Decada.Todas || CalificacionMinima > 0;
+
+    /// <summary>Copia sin géneros, década ni calificación mínima; conserva texto, estado y orden.</summary>
+    public CriteriosFiltro SinFiltrosDeContenido() =>
+        this with { Generos = FrozenSet<string>.Empty, Decada = Decada.Todas, CalificacionMinima = 0 };
+
     public bool Equals(CriteriosFiltro? otro) =>
         otro is not null
         && Texto == otro.Texto && Estado == otro.Estado && Decada == otro.Decada

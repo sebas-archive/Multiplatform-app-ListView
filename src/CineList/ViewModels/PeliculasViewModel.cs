@@ -59,8 +59,13 @@ public partial class PeliculasViewModel : ObservableObject
     public int FiltrosActivos => _criterios.CuantosActivos;
     public string TextoActivos => FiltroPeliculas.TextoActivos(_criterios);
     public bool HayFiltrosActivos => FiltrosActivos > 0;
-    public bool SinResultadosConFiltros => SinResultados && HayFiltrosActivos;
-    public bool SinResultadosSimple => SinResultados && !HayFiltrosActivos;
+    // "Con filtros" solo si hay filtros de contenido (el orden no vacía la lista); el botón de limpiar
+    // se ofrece únicamente cuando quitarlos devolvería resultados (si no, la búsqueda/chip es la causa)
+    public bool SinResultadosConFiltros => SinResultados && _criterios.TieneFiltrosDeContenido;
+    public bool SinResultadosSimple => SinResultados && !_criterios.TieneFiltrosDeContenido;
+    public bool PuedeLimpiarFiltros =>
+        _criterios.TieneFiltrosDeContenido
+        && FiltroPeliculas.Contar(_todas, _criterios.SinFiltrosDeContenido()) > 0;
     // Solo lectura, para el panel de filtros
     public IReadOnlyList<Pelicula> Todas => _todas;
 
@@ -73,10 +78,14 @@ public partial class PeliculasViewModel : ObservableObject
     // La página conecta aquí la animación de la celda que se elimina (fade + colapso)
     public Func<Pelicula, Task>? AnimarEliminacion { get; set; }
 
+    // La página conecta aquí el desvanecimiento de la lista antes de reconstruirla (y su restauración)
+    public Func<Task>? AnimarSalidaLista { get; set; }
+    public Action? RestaurarLista { get; set; }
+
     // Se dispara cuando una película cambia sin salir de la lista (p. ej. vista/pendiente)
     public event Action<Pelicula>? PeliculaActualizada;
 
-    // Se dispara cuando una película sale de la lista (las celdas recicladas se restablecen)
+    // Se dispara cuando una película sale de la lista (sus celdas retenidas se restablecen)
     public event Action<Pelicula>? PeliculaQuitada;
 
     partial void OnTextoBusquedaChanged(string value)
@@ -92,7 +101,7 @@ public partial class PeliculasViewModel : ObservableObject
         if (_sincronizando) return;
         _criterios = _criterios with { Estado = value };
         guardados.Guardar(_criterios);
-        Aplicar(animar: true);
+        AplicarConSalida();
     }
 
     partial void OnErrorChanged(string? value)
@@ -109,6 +118,7 @@ public partial class PeliculasViewModel : ObservableObject
         OnPropertyChanged(nameof(MostrarResumen));
         OnPropertyChanged(nameof(SinResultadosConFiltros));
         OnPropertyChanged(nameof(SinResultadosSimple));
+        OnPropertyChanged(nameof(PuedeLimpiarFiltros));
     }
 
     // Aplica criterios nuevos desde el panel: guarda, sincroniza estado y re-filtra con entrada escalonada
@@ -120,12 +130,12 @@ public partial class PeliculasViewModel : ObservableObject
         _sincronizando = true; // evita que OnEstadoChanged re-aplique y reemplace los criterios
         Estado = nuevos.Estado;
         _sincronizando = false;
-        Aplicar(animar: true);
+        AplicarConSalida();
     }
 
     [RelayCommand]
     private void LimpiarFiltros() =>
-        AplicarCriterios(CriteriosFiltro.Vacio with { Texto = TextoBusqueda });
+        AplicarCriterios(_criterios.SinFiltrosDeContenido());
 
     // Últimos valores notificados: solo se avisa de lo que cambió (la página anima con esos avisos)
     private bool _agrupadoNotificado = true;
@@ -154,6 +164,7 @@ public partial class PeliculasViewModel : ObservableObject
         }
         OnPropertyChanged(nameof(SinResultadosConFiltros));
         OnPropertyChanged(nameof(SinResultadosSimple));
+        OnPropertyChanged(nameof(PuedeLimpiarFiltros));
     }
 
     [RelayCommand]
@@ -203,8 +214,9 @@ public partial class PeliculasViewModel : ObservableObject
             return;
         }
         // Excepción intencional a la regla de clonar: se muta la instancia en su lugar. Las filas
-        // visibles se repintan con PeliculaActualizada; las que están fuera de pantalla se repintan
-        // al reciclarse (rebind); ninguna otra pantalla viva conserva esta instancia.
+        // visibles se repintan con PeliculaActualizada (la lista usa RetainElement: las celdas conservan
+        // su BindingContext); los cambios fuera de pantalla pasan por Upsert o la reconstrucción;
+        // ninguna otra pantalla viva conserva esta instancia.
         pelicula.Vista = copia.Vista;
         if (FiltroPeliculas.Contar([pelicula], _criterios) == 0)
         {
@@ -307,11 +319,28 @@ public partial class PeliculasViewModel : ObservableObject
         }
     }
 
+    // Cambio de filtro, orden o chip: las filas actuales se desvanecen y luego se reconstruye con entrada
+    private int _versionSalida;
+
+    private async void AplicarConSalida()
+    {
+        var version = ++_versionSalida;
+        if (AnimarSalidaLista is not null && Grupos.Count > 0)
+        {
+            try { await AnimarSalidaLista(); }
+            catch (Exception ex) { Debug.WriteLine($"[PeliculasViewModel] {ex.Message}"); }
+            if (version != _versionSalida) return; // otro cambio posterior ya reconstruyó
+        }
+        Aplicar(animar: true);
+        RestaurarLista?.Invoke();
+    }
+
     // Filtra, ordena y agrupa en memoria (sin red). Con orden distinto de Género el resultado es un
     // único grupo de género "" (lista plana); un grupo vacío no se agrega para que 0 resultados
     // sea igual en ambos modos.
     private void Aplicar(bool animar)
     {
+        _versionSalida++;
         var resultado = FiltroPeliculas.Aplicar(_todas, _criterios);
         if (animar) IniciarEntrada();
 

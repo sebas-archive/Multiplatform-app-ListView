@@ -130,7 +130,7 @@ Los pósters se guardan como JPEG en base64 dentro del documento (lado mayor 600
 | 1. Modelo | [`src/CineList.Core/Models/Pelicula.cs`](src/CineList.Core/Models/Pelicula.cs) |
 | 2. Celda personalizada (`ViewCell`) | [`src/CineList/Views/Celdas/PeliculaViewCell.cs`](src/CineList/Views/Celdas/PeliculaViewCell.cs) |
 | 3. Vista con el `ListView` | [`src/CineList/Views/PeliculasPage.xaml`](src/CineList/Views/PeliculasPage.xaml) |
-| 4. Evento de selección `OnPeliculaTapped` (`ItemTapped`) | [`src/CineList/Views/PeliculasPage.xaml.cs`](src/CineList/Views/PeliculasPage.xaml.cs#L138) |
+| 4. Evento de selección `OnPeliculaTapped` (`ItemTapped`) | [`src/CineList/Views/PeliculasPage.xaml.cs`](src/CineList/Views/PeliculasPage.xaml.cs#L147) |
 
 ## Funciones
 
@@ -150,6 +150,6 @@ Los pósters se guardan como JPEG en base64 dentro del documento (lado mayor 600
   - el póster vuela desde la lista hasta el detalle
   - el detalle usa el póster desenfocado como fondo (el desenfoque requiere Android 12 o superior) con efecto parallax al desplazar
   - las estrellas se llenan una a una
-  - al marcar una película como vista o pendiente la etiqueta gira, y al pasar a vista sale una pequeña ráfaga dorada
+  - al marcar una película como vista o pendiente la etiqueta gira, y al pasar a vista sale una pequeña ráfaga del color de acento
   - el panel de filtros sube con rebote y los chips hacen un pequeño pop al seleccionarse
 - Estados de carga, vacío y error con "Reintentar" cuando no hay conexión
