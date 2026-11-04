@@ -16,21 +16,38 @@ public static class Rafaga
             ? c : Colors.Gold;
     }
 
-    // centro: en coordenadas del contenedor. Con reducir movimiento no hace nada.
-    public static async Task Lanzar(Layout contenedor, Point centro, Color color, int puntos = 8)
+    // Dónde nace la ráfaga respecto al elemento de origen
+    public enum PuntoOrigen { Centro, BordeSuperior }
+
+    // Ráfaga desde un elemento hacia una capa (convierte coordenadas de ventana a las de la capa).
+    // arco: ángulos en grados (0 = derecha, 90 = abajo, -90 = arriba). Sin layout o con reducir movimiento no hace nada.
+    public static Task Desde(VisualElement origen, Layout capa, PuntoOrigen punto, int puntos, double arcoMin, double arcoMax,
+        double distanciaMin = 40, double distanciaMax = 60)
+    {
+        if (Animaciones.ReducirMovimiento) return Task.CompletedTask;
+        if (Coordenadas.EnVentana(origen) is not { } r || Coordenadas.EnVentana(capa) is not { } c) return Task.CompletedTask;
+        var y = punto == PuntoOrigen.BordeSuperior ? r.Top : r.Center.Y;
+        return Lanzar(capa, new Point(r.Center.X - c.X, y - c.Y), ColorAcento(), puntos,
+            arcoMin, arcoMax, distanciaMin, distanciaMax);
+    }
+
+    // centro: en coordenadas del contenedor. Los ángulos (grados) se reparten por igual en el arco.
+    // Con reducir movimiento no hace nada.
+    public static async Task Lanzar(Layout contenedor, Point centro, Color color, int puntos = 8,
+        double arcoMin = 0, double arcoMax = 360, double distanciaMin = 40, double distanciaMax = 60)
     {
         if (Animaciones.ReducirMovimiento || puntos <= 0) return;
         var creadas = new List<BoxView>();
         try
         {
             var azar = Random.Shared;
-            var inicio = azar.NextDouble() * Math.Tau;
+            var paso = (arcoMax - arcoMin) / puntos;
             var tareas = new List<Task>();
             for (var i = 0; i < puntos; i++)
             {
                 // Ángulos repartidos por igual con un pequeño desvío al azar
-                var angulo = inicio + i * Math.Tau / puntos + (azar.NextDouble() - 0.5) * 0.4;
-                var distancia = 40 + azar.NextDouble() * 20;
+                var angulo = (arcoMin + (i + 0.5) * paso + (azar.NextDouble() - 0.5) * paso * 0.4) * Math.PI / 180;
+                var distancia = distanciaMin + azar.NextDouble() * (distanciaMax - distanciaMin);
                 double tam = 6 + azar.Next(0, 3);
                 var punto = new BoxView
                 {

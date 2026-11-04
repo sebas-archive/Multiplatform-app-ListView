@@ -267,14 +267,6 @@ public static class Animaciones
         }
     }
 
-    // Cambio de etiqueta: leve rebote
-    public static async Task Rebote(VisualElement v)
-    {
-        if (ReducirMovimiento) return;
-        await v.ScaleTo(1.12, 100, Easing.CubicOut);
-        await v.ScaleTo(1, 140, Easing.CubicOut);
-    }
-
     // Formulario: entra desde abajo (40 px) con fade; luego sus bloques aparecen escalonados
     public static async Task EntradaModal(VisualElement contenido, IEnumerable<VisualElement> bloques)
     {

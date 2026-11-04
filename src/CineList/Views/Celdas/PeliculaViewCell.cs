@@ -190,14 +190,9 @@ public class PeliculaViewCell : ViewCell
         }
     }
 
-    private Task LanzarRafaga()
-    {
-        if (Animaciones.ReducirMovimiento || CapaRafaga is not { } capa) return Task.CompletedTask;
-        if (Coordenadas.EnVentana(_etiqueta) is not { } etiqueta || Coordenadas.EnVentana(capa) is not { } origenCapa)
-            return Task.CompletedTask;
-        var centro = new Point(etiqueta.Center.X - origenCapa.X, etiqueta.Center.Y - origenCapa.Y);
-        return Rafaga.Lanzar(capa, centro, Rafaga.ColorAcento(), 6);
-    }
+    // Hacia la izquierda, arriba y abajo (90 a 270 grados): no sale por el borde derecho de la pantalla
+    private Task LanzarRafaga() =>
+        CapaRafaga is { } capa ? Rafaga.Desde(_etiqueta, capa, Rafaga.PuntoOrigen.Centro, 6, 90, 270) : Task.CompletedTask;
 
     // Tras eliminar: ninguna celda (reciclada) debe quedar transparente o colapsada
     private static void RestablecerCeldasDe(Pelicula pelicula)

@@ -243,15 +243,14 @@ public partial class DetallePage : ContentPage
         }
     }
 
-    // Tras guardar con éxito: al pasar a VISTA, ráfaga dorada desde el centro del botón
+    // Tras guardar con éxito: al pasar a VISTA, ráfaga desde el borde superior del botón
     private async void OnVistaAlternada(bool vista)
     {
         if (!vista || !_visible || Animaciones.ReducirMovimiento) return;
         try
         {
-            if (Coordenadas.EnVentana(BotonVista) is not { } boton || Coordenadas.EnVentana(CapaVuelo) is not { } capa) return;
-            var centro = new Point(boton.Center.X - capa.X, boton.Center.Y - capa.Y);
-            await Rafaga.Lanzar(CapaVuelo, centro, Rafaga.ColorAcento());
+            // Nace en el borde superior del botón y solo sube: así siempre cruza el fondo, no el botón
+            await Rafaga.Desde(BotonVista, CapaVuelo, Rafaga.PuntoOrigen.BordeSuperior, 8, -165, -15, 50, 70);
         }
         catch (Exception ex)
         {
