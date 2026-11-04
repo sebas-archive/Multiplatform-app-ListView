@@ -1,0 +1,200 @@
+.panel {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+}
+.velo {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    animation: velo-entra 200ms ease-out;
+}
+.panel.cerrando .velo { animation: velo-sale 220ms ease-in forwards; }
+
+.hoja {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    max-height: 85vh;
+    max-height: 85dvh;
+    display: flex;
+    flex-direction: column;
+    background: var(--superficie);
+    color: var(--texto);
+    border: 1px solid var(--borde-superficie);
+    border-bottom: 0;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.3);
+    padding: 0 18px;
+    outline: none;
+    animation: hoja-sube 380ms cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+/* El rebote del resorte sube la hoja de más: esta prolongación evita ver un hueco debajo */
+.hoja::after {
+    content: "";
+    position: absolute;
+    left: -1px;
+    right: -1px;
+    top: calc(100% - 1px);
+    height: 120px;
+    background: var(--superficie);
+}
+.panel.cerrando .hoja { animation: hoja-baja 220ms ease-in forwards; }
+
+.asa {
+    flex: none;
+    align-self: center;
+    width: 100%;
+    height: 28px;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.asa span { width: 40px; height: 4px; border-radius: 2px; background: var(--texto-secundario); opacity: 0.6; }
+.asa:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; border-radius: 12px; }
+
+.encabezado { flex: none; display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.encabezado h2 { font-size: 19px; font-weight: 700; }
+.limpiar-borrador {
+    min-height: 44px;
+    padding: 0 8px;
+    margin-right: -8px;
+    border: 0;
+    background: transparent;
+    color: var(--acento);
+    font-weight: 600;
+    font-size: 15px;
+    border-radius: 12px;
+}
+.limpiar-borrador:focus-visible { outline: 2px solid var(--acento); }
+
+.cuerpo { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-bottom: 8px; overscroll-behavior: contain; scrollbar-width: none; }
+.cuerpo::-webkit-scrollbar { display: none; }
+.cuerpo section { margin-top: 14px; }
+.etiqueta {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.6px;
+    text-transform: uppercase;
+    color: var(--acento);
+    margin-bottom: 10px;
+}
+
+/* Segmentos con píldora deslizante */
+.segmentos {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    height: 40px;
+    padding: 3px;
+    border-radius: 14px;
+    background: var(--campo);
+    border: 1px solid var(--borde-campo);
+}
+.pildora {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: calc((100% - 6px) / 5);
+    border-radius: 11px;
+    background: var(--acento);
+    transform: translateX(calc(var(--indice) * 100%));
+    transition: transform 260ms cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+.segmento {
+    position: relative;
+    border: 0;
+    background: transparent;
+    min-width: 0;
+    padding: 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--texto);
+    border-radius: 11px;
+    transition: color 150ms ease;
+}
+.segmento.activo { color: var(--acento-texto); font-weight: 700; }
+.segmento:focus-visible { outline: 2px solid var(--texto); outline-offset: -4px; }
+
+/* Chips */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: 18px;
+    border: 1px solid var(--borde-campo);
+    background: var(--campo);
+    color: var(--texto);
+    font-size: 13.5px;
+    font-weight: 600;
+    transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+.chip.activo { background: var(--acento); border-color: var(--acento); color: var(--acento-texto); }
+.chip.pop { animation: chip-pop 220ms ease-out; }
+.chip:focus-visible, .estrella:focus-visible, .boton-ver:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.vacio { color: var(--texto-secundario); font-size: 14px; }
+
+/* Calificación mínima */
+.calificacion { display: flex; align-items: center; gap: 12px; }
+.estrellas-editables { display: flex; gap: 2px; }
+.estrella {
+    width: 44px;
+    height: 44px;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: var(--acento);
+    font-size: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+.estrella.pop { animation: chip-pop 220ms ease-out; }
+.vacia { opacity: 0.45; }
+.texto-calificacion { color: var(--texto-secundario); font-size: 14px; font-weight: 600; }
+
+/* Botón Ver N películas */
+.pie { flex: none; padding: 10px 0 max(16px, env(safe-area-inset-bottom)); }
+.boton-ver {
+    width: 100%;
+    height: 52px;
+    border: 0;
+    border-radius: 16px;
+    background: var(--acento);
+    color: var(--acento-texto);
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3em;
+}
+.numero { position: relative; display: inline-flex; overflow: hidden; height: 1.4em; align-items: center; min-width: 0.6em; justify-content: center; }
+.digitos { display: inline-block; }
+.digitos.sale { position: absolute; animation: numero-sale 80ms cubic-bezier(0.32, 0, 0.67, 0) forwards; }
+.digitos.entra { animation: numero-entra 80ms 80ms cubic-bezier(0.33, 1, 0.68, 1) backwards; }
+.sr-solo { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+@keyframes velo-entra { from { opacity: 0; } }
+@keyframes velo-sale { to { opacity: 0; } }
+@keyframes hoja-sube { from { transform: translateY(100%); } }
+@keyframes hoja-baja { to { transform: translateY(100%); } }
+@keyframes chip-pop { 0% { transform: scale(1); } 45% { transform: scale(1.15); } 100% { transform: scale(1); } }
+@keyframes numero-sale { to { transform: translateY(-1.1em); opacity: 0; } }
+@keyframes numero-entra { from { transform: translateY(1.1em); opacity: 0; } }
+
+@media (min-width: 640px) {
+    .panel { align-items: flex-end; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .velo, .hoja, .chip.pop, .estrella.pop, .digitos { animation: none !important; }
+    .pildora, .chip, .segmento { transition: none !important; }
+}

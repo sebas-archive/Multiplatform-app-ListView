@@ -16,6 +16,24 @@
         guardar: (clave, valor) => { try { localStorage.setItem(clave, valor); } catch { } },
         temaActual: () => document.documentElement.getAttribute('data-tema') || 'oscuro',
         fijarTema: (tema) => document.documentElement.setAttribute('data-tema', tema),
+        // Panel de filtros: bloquea el scroll del fondo, mueve el foco a la hoja y atrapa Tab dentro
+        abrirPanel: (hoja) => {
+            const previo = document.activeElement;
+            window.cinelist._previo = previo;
+            document.documentElement.classList.add('sin-scroll');
+            if (!hoja) return;
+            hoja.focus({ preventScroll: true });
+            hoja._trampa = (e) => {
+                if (e.key !== 'Tab') return;
+                const f = [...hoja.querySelectorAll('button:not([disabled]),[href],input,[tabindex]:not([tabindex="-1"])')].filter(x => x.offsetParent !== null);
+                if (!f.length) return;
+                const primero = f[0], ultimo = f[f.length - 1];
+                if (e.shiftKey && (document.activeElement === primero || document.activeElement === hoja)) { e.preventDefault(); ultimo.focus(); }
+                else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
+            };
+            hoja.addEventListener('keydown', hoja._trampa);
+        },
+        cerrarPanel: () => document.documentElement.classList.remove('sin-scroll'),
         enLinea: () => navigator.onLine !== false,
         reducirMovimiento: reducir,
 

@@ -34,7 +34,7 @@
             </button>
         }
     </label>
-    <button type="button" class="boton-filtros" @onclick="AbrirPanel"
+    <button type="button" class="boton-filtros" @ref="_botonFiltros" @onclick="AbrirPanel"
             aria-label="@(Estado.Criterios.CuantosActivos > 0 ? $"Filtros y orden, {Estado.Criterios.CuantosActivos} activos" : "Filtros y orden")">
         <span class="icono" aria-hidden="true">&#xe429;</span>
         <span>Filtros</span>
@@ -145,6 +145,8 @@
     <div class="aviso" role="status">@Estado.Aviso</div>
 }
 
+<PanelFiltros @ref="_panel" OnCerrado="DevolverFocoAsync" />
+
 <a class="fab" href="nueva" aria-label="Agregar película">
     <span class="icono" aria-hidden="true">&#xe145;</span>
 </a>
@@ -191,9 +193,17 @@
         Estado.CambiarTexto("");
     }
 
-    /// <summary>Abre el panel "Filtros y orden" (llega en la Task 3).</summary>
-    private void AbrirPanel()
+    private PanelFiltros? _panel;
+    private ElementReference _botonFiltros;
+
+    private Task AbrirPanel() => _panel is null ? Task.CompletedTask : _panel.AbrirAsync();
+
+    // Al cerrar el panel el foco vuelve al botón Filtros
+    private async Task DevolverFocoAsync()
     {
+        try { await _botonFiltros.FocusAsync(); }
+        catch (JSException) { }
+        catch (InvalidOperationException) { }
     }
 
     // Antes de reconstruir por chip u orden, la lista se desvanece en 120 ms (EstadoLista.Saliendo

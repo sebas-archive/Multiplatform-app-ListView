@@ -1,0 +1,276 @@
+@* Hoja inferior "Filtros y orden". El borrador vive aquí y no toca la lista hasta "Ver N películas".
+   Esc, clic en el velo o toque en el asa cierran sin aplicar. Estados: cerrado / abierto / cerrando. *@
+@implements IAsyncDisposable
+@inject EstadoLista Estado
+@inject IJSRuntime JS
+
+@if (_fase != Fase.Cerrado)
+{
+    <div class="panel @(_fase == Fase.Cerrando ? "cerrando" : "")">
+        <div class="velo" @onclick="CerrarAsync" aria-hidden="true"></div>
+        <div class="hoja" role="dialog" aria-modal="true" aria-labelledby="panel-titulo" tabindex="-1"
+             @ref="_hoja" @onkeydown="TeclaAsync">
+            <button type="button" class="asa" aria-label="Cerrar sin aplicar" @onclick="CerrarAsync"><span></span></button>
+
+            <div class="encabezado">
+                <h2 id="panel-titulo">Filtros y orden</h2>
+                <button type="button" class="limpiar-borrador" aria-label="Limpiar filtros y orden del panel" @onclick="Limpiar">Limpiar</button>
+            </div>
+
+            <div class="cuerpo">
+                <section>
+                    <h3 class="etiqueta">Ordenar por</h3>
+                    <div class="segmentos" role="radiogroup" aria-label="Ordenar por" style="--indice: @((int)_orden)">
+                        <span class="pildora" aria-hidden="true"></span>
+                        @foreach (var o in Ordenes)
+                        {
+                            <button type="button" role="radio" class="segmento @(o == _orden ? "activo" : "")"
+                                    aria-checked="@(o == _orden ? "true" : "false")"
+                                    aria-label="@($"Ordenar por {OrdenPeliculasTexto.Etiqueta(o)}")"
+                                    @onclick="() => FijarOrden(o)">@EtiquetaOrden(o)</button>
+                        }
+                    </div>
+                </section>
+
+                <section>
+                    <h3 class="etiqueta">Géneros</h3>
+                    <div class="chips" role="group" aria-label="Géneros">
+                        @foreach (var g in _generosVisibles)
+                        {
+                            var activo = _generos.Contains(g);
+                            <button type="button" class="chip @(activo ? "activo" : "") @(_pop == g ? "pop" : "")"
+                                    aria-pressed="@(activo ? "true" : "false")" @key="g"
+                                    @onclick="() => AlternarGenero(g)">@g</button>
+                        }
+                        @if (_generosVisibles.Count == 0)
+                        {
+                            <p class="vacio">Aún no hay géneros</p>
+                        }
+                    </div>
+                </section>
+
+                <section>
+                    <h3 class="etiqueta">Década</h3>
+                    <div class="chips" role="radiogroup" aria-label="Década">
+                        @foreach (var d in Decadas)
+                        {
+                            <button type="button" role="radio" class="chip @(d == _decada ? "activo" : "") @(_pop == $"d{(int)d}" ? "pop" : "")"
+                                    aria-checked="@(d == _decada ? "true" : "false")" @key="d"
+                                    @onclick="() => FijarDecada(d)">@DecadaTexto.Etiqueta(d)</button>
+                        }
+                    </div>
+                </section>
+
+                <section>
+                    <h3 class="etiqueta">Calificación mínima</h3>
+                    <div class="calificacion">
+                        <div class="estrellas-editables" role="group" aria-label="Calificación mínima">
+                            @for (var i = 1; i <= 5; i++)
+                            {
+                                var n = i;
+                                <button type="button" class="estrella @(_pop == $"e{n}" ? "pop" : "")"
+                                        aria-pressed="@(n <= _calificacion ? "true" : "false")"
+                                        aria-label="@($"{n} {(n == 1 ? "estrella" : "estrellas")}")"
+                                        @onclick="() => FijarCalificacion(n)">
+                                    <span class="@(n <= _calificacion ? "icono-lleno llena" : "icono vacia")" aria-hidden="true">&#xf09a;</span>
+                                </button>
+                            }
+                        </div>
+                        <span class="texto-calificacion">@(_calificacion == 0 ? "Cualquiera" : $"{_calificacion} o más")</span>
+                    </div>
+                </section>
+            </div>
+
+            <div class="pie">
+                <button type="button" class="boton-ver" @onclick="VerAsync">
+                    <span>Ver</span>
+                    <span class="numero" aria-hidden="true">
+                        @if (_numeroSaliente is not null)
+                        {
+                            <span class="digitos sale" @key="@("s" + _versionNumero)">@_numeroSaliente</span>
+                        }
+                        <span class="digitos @(_numeroSaliente is not null ? "entra" : "")" @key="@("e" + _versionNumero)">@_conteo</span>
+                    </span>
+                    <span>@(_conteo == 1 ? "película" : "películas")</span>
+                </button>
+                <span class="sr-solo" role="status">@($"Ver {_conteo} {(_conteo == 1 ? "película" : "películas")}")</span>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private enum Fase { Cerrado, Abierto, Cerrando }
+
+    private static readonly OrdenPeliculas[] Ordenes = Enum.GetValues<OrdenPeliculas>();
+    private static readonly Decada[] Decadas = Enum.GetValues<Decada>();
+
+    /// <summary>Se dispara al terminar de cerrarse (con o sin aplicar), para devolver el foco al botón Filtros.</summary>
+    [Parameter] public EventCallback OnCerrado { get; set; }
+
+    private Fase _fase = Fase.Cerrado;
+    private ElementReference _hoja;
+    private bool _enfocar;
+
+    // Borrador (copia de los criterios vigentes)
+    private HashSet<string> _generos = new();
+    private List<string> _generosVisibles = [];
+    private Decada _decada;
+    private int _calificacion;
+    private OrdenPeliculas _orden;
+    private int _conteo;
+    private string? _pop;
+
+    // Número del botón: el anterior sube y sale, el nuevo entra desde abajo
+    private string? _numeroSaliente;
+    private int _versionNumero;
+    private int _tokenNumero;
+
+    public bool Abierto => _fase == Fase.Abierto;
+
+    /// <summary>Abre el panel con un borrador nuevo a partir de los criterios vigentes.</summary>
+    public async Task AbrirAsync()
+    {
+        if (_fase != Fase.Cerrado) return;
+        var c = Estado.Criterios;
+        _orden = c.Orden;
+        _decada = c.Decada;
+        _calificacion = c.CalificacionMinima;
+        // Géneros disponibles más los guardados que ya no tenga ninguna película (para poder quitarlos)
+        var disponibles = FiltroPeliculas.GenerosDisponibles(Estado.Todas);
+        // (el conjunto de Core compara sin mayúsculas ni tildes)
+        var conjunto = (CriteriosFiltro.Vacio with { Generos = disponibles.ToHashSet() }).Generos;
+        _generosVisibles = disponibles.Concat(c.Generos.Where(g => !conjunto.Contains(g))).ToList();
+        _generos = _generosVisibles.Where(g => c.Generos.Contains(g)).ToHashSet();
+        _conteo = Contar();
+        _numeroSaliente = null;
+        _pop = null;
+        _fase = Fase.Abierto;
+        _enfocar = true;
+        StateHasChanged();
+        await Task.CompletedTask;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_enfocar || _fase != Fase.Abierto) return;
+        _enfocar = false;
+        try { await JS.InvokeVoidAsync("cinelist.abrirPanel", _hoja); }
+        catch (JSException) { }
+        catch (InvalidOperationException) { }
+    }
+
+    // Criterios del borrador con el texto y el estado actuales de la página
+    private CriteriosFiltro Borrador() => Estado.Criterios with
+    {
+        Generos = _generos,
+        Decada = _decada,
+        CalificacionMinima = _calificacion,
+        Orden = _orden,
+    };
+
+    private int Contar() => FiltroPeliculas.Contar(Estado.Todas, Borrador());
+
+    private static string EtiquetaOrden(OrdenPeliculas o) =>
+        o == OrdenPeliculas.Calificacion ? "Calif." : OrdenPeliculasTexto.Etiqueta(o);
+
+    private void FijarOrden(OrdenPeliculas o) => _orden = o;
+
+    private void AlternarGenero(string g)
+    {
+        if (!_generos.Remove(g)) { _generos.Add(g); _pop = g; } else _pop = null;
+        Recontar();
+    }
+
+    private void FijarDecada(Decada d)
+    {
+        _pop = d != _decada ? $"d{(int)d}" : null;
+        _decada = d;
+        Recontar();
+    }
+
+    private void FijarCalificacion(int n)
+    {
+        _calificacion = _calificacion == n ? 0 : n;
+        _pop = $"e{n}";
+        Recontar();
+    }
+
+    // Restablece el borrador (la lista no cambia hasta "Ver")
+    private void Limpiar()
+    {
+        _orden = OrdenPeliculas.Genero;
+        _decada = Decada.Todas;
+        _calificacion = 0;
+        _generos.Clear();
+        _pop = null;
+        Recontar();
+    }
+
+    private void Recontar()
+    {
+        var nuevo = Contar();
+        if (nuevo == _conteo) return;
+        var anterior = _conteo;
+        _conteo = nuevo;
+        _ = DeslizarNumeroAsync(anterior);
+    }
+
+    // El anterior sube (80 ms) y el nuevo entra desde abajo (80 ms); a los 160 ms se quita el saliente
+    private async Task DeslizarNumeroAsync(int anterior)
+    {
+        var token = ++_tokenNumero;
+        _numeroSaliente = anterior.ToString();
+        _versionNumero++;
+        try
+        {
+            await Task.Delay(180);
+            if (token != _tokenNumero) return;
+            _numeroSaliente = null;
+            _versionNumero++;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (ObjectDisposedException) { }
+    }
+
+    private Task TeclaAsync(KeyboardEventArgs e) => e.Key == "Escape" ? CerrarAsync() : Task.CompletedTask;
+
+    private Task CerrarAsync() => CerrarCon(aplicar: false);
+
+    private Task VerAsync() => CerrarCon(aplicar: true);
+
+    // Cierra con animación (220 ms) y, si corresponde, aplica ya con la hoja fuera para que la lista anime sola
+    private async Task CerrarCon(bool aplicar)
+    {
+        if (_fase != Fase.Abierto) return;
+        var criterios = Borrador();
+        _fase = Fase.Cerrando;
+        StateHasChanged();
+        try
+        {
+            if (!await ReducirAsync()) await Task.Delay(220);
+            await JS.InvokeVoidAsync("cinelist.cerrarPanel");
+        }
+        catch (JSException) { }
+        catch (InvalidOperationException) { }
+        _fase = Fase.Cerrado;
+        _tokenNumero++;
+        StateHasChanged();
+        if (aplicar) Estado.AplicarCriterios(criterios);
+        await OnCerrado.InvokeAsync();
+    }
+
+    private async Task<bool> ReducirAsync()
+    {
+        try { return await JS.InvokeAsync<bool>("cinelist.reducirMovimiento"); }
+        catch (JSException) { return true; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _tokenNumero++;
+        if (_fase == Fase.Cerrado) return;
+        try { await JS.InvokeVoidAsync("cinelist.cerrarPanel"); }
+        catch (Exception) { }
+    }
+}

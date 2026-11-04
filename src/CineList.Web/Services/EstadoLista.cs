@@ -235,7 +235,8 @@ public class EstadoLista(IPeliculasRepository repositorio, AlmacenLocal almacen,
     private async Task AplicarConSalidaAsync()
     {
         var version = ++_versionSalida;
-        if (AnimarSalidaLista is { } salida && Grupos.Count > 0)
+        // Con movimiento reducido no hay desvanecimiento: ni siquiera se marca Saliendo (evita el parpadeo)
+        if (AnimarSalidaLista is { } salida && Grupos.Count > 0 && !await ReducirMovimientoAsync())
         {
             Saliendo = true;
             Notificar();
@@ -316,6 +317,12 @@ public class EstadoLista(IPeliculasRepository repositorio, AlmacenLocal almacen,
     {
         if (ex is not RepositorioException repo) return generico;
         return repo.SinConexion && await EnLineaAsync() ? SinServidor : repo.Message;
+    }
+
+    private async Task<bool> ReducirMovimientoAsync()
+    {
+        try { return await js.InvokeAsync<bool>("cinelist.reducirMovimiento"); }
+        catch (JSException) { return true; }
     }
 
     private async Task<bool> EnLineaAsync()
