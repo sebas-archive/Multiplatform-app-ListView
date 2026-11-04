@@ -84,8 +84,10 @@
         Estado.VinoDeLista = true; // el detalle volverá con history.back() para no ensuciar el historial
         try
         {
-            conTransicion = await JS.InvokeAsync<string>("cinelist.navegarConTransicion",
-                _fila, url, TransicionPoster.IdSeguro(Pelicula.Id)) != "no";
+            var resultado = await JS.InvokeAsync<string>("cinelist.navegarConTransicion",
+                _fila, url, TransicionPoster.IdSeguro(Pelicula.Id));
+            conTransicion = resultado != "no";
+            if (resultado == "ignorada") Estado.VinoDeLista = false; // no se navegó: no debe quedar marcada
         }
         catch (JSException ex) { Console.WriteLine($"[FilaPelicula] {ex.Message}"); }
         catch (JSDisconnectedException) { }

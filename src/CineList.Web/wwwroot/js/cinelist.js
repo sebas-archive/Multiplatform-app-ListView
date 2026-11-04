@@ -99,6 +99,22 @@
         return 'ok';
     };
 
+    // Atrapa Tab dentro de un contenedor (panel de filtros y diálogos)
+    const atraparTab = (contenedor) => {
+        if (contenedor._trampa) contenedor.removeEventListener('keydown', contenedor._trampa);
+        contenedor._trampa = (e) => {
+            if (e.key !== 'Tab') return;
+            const f = [...contenedor.querySelectorAll('button:not([disabled]),[href],input,[tabindex]:not([tabindex="-1"])')].filter(x => x.offsetParent !== null);
+            if (!f.length) return;
+            const primero = f[0], ultimo = f[f.length - 1];
+            if (e.shiftKey && (document.activeElement === primero || document.activeElement === contenedor)) { e.preventDefault(); ultimo.focus(); }
+            else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
+        };
+        contenedor.addEventListener('keydown', contenedor._trampa);
+    };
+    let ultimoPop = -1e9;
+    window.addEventListener('popstate', () => { ultimoPop = performance.now(); }, true);
+
     window.cinelist = {
         leer: (clave) => { try { return localStorage.getItem(clave); } catch { return null; } },
         guardar: (clave, valor) => { try { localStorage.setItem(clave, valor); } catch { } },
@@ -111,17 +127,26 @@
             document.documentElement.classList.add('sin-scroll');
             if (!hoja) return;
             hoja.focus({ preventScroll: true });
-            hoja._trampa = (e) => {
-                if (e.key !== 'Tab') return;
-                const f = [...hoja.querySelectorAll('button:not([disabled]),[href],input,[tabindex]:not([tabindex="-1"])')].filter(x => x.offsetParent !== null);
-                if (!f.length) return;
-                const primero = f[0], ultimo = f[f.length - 1];
-                if (e.shiftKey && (document.activeElement === primero || document.activeElement === hoja)) { e.preventDefault(); ultimo.focus(); }
-                else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
-            };
-            hoja.addEventListener('keydown', hoja._trampa);
+            atraparTab(hoja);
         },
         cerrarPanel: () => document.documentElement.classList.remove('sin-scroll'),
+        // Diálogo modal: foco al primer botón, Tab atrapado dentro y, al cerrar, el foco vuelve a donde estaba
+        abrirDialogo: (dialogo) => {
+            if (!dialogo) return;
+            window.cinelist._previoDialogo = document.activeElement;
+            atraparTab(dialogo);
+            const primero = dialogo.querySelector('button:not([disabled])');
+            (primero || dialogo).focus({ preventScroll: true });
+        },
+        cerrarDialogo: () => {
+            const previo = window.cinelist._previoDialogo;
+            window.cinelist._previoDialogo = null;
+            if (previo && previo.isConnected && previo.focus) previo.focus({ preventScroll: true });
+        },
+        // Historial: true si la entrada anterior es de la app (Blazor numera sus entradas en history.state._index)
+        hayEntradaPrevia: () => { try { return (history.state?._index ?? 0) > 0; } catch { return false; } },
+        // Última vez que el navegador retrocedió/avanzó (popstate): distingue Atrás de un clic en un enlace
+        fueRetroceso: () => performance.now() - ultimoPop < 1500,
         // Reduce una imagen subida: decodifica respetando la orientación EXIF, escala (lado mayor = ladoMax,
         // sin agrandar) y exporta JPEG. Devuelve el base64 sin prefijo, o null si el archivo no es una imagen.
         // `datos` puede ser el base64 que envía Blazor o bytes (Uint8Array/ArrayBuffer/array).

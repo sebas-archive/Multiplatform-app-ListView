@@ -14,5 +14,6 @@ builder.Services.AddSingleton<IPeliculasRepository>(sp => new PeliculasRepositor
 builder.Services.AddSingleton<AlmacenLocal>();
 builder.Services.AddSingleton<TemaService>();
 builder.Services.AddSingleton<EstadoLista>();
+builder.Services.AddSingleton<Historial>();
 
 await builder.Build().RunAsync();

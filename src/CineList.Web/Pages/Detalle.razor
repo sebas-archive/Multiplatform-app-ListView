@@ -2,6 +2,7 @@
 @implements IAsyncDisposable
 @inject EstadoLista Estado
 @inject NavigationManager Navegacion
+@inject Historial Historia
 @inject IJSRuntime JS
 
 <PageTitle>@(_pelicula is null ? "Película" : _pelicula.Titulo) · CineList</PageTitle>
@@ -138,6 +139,8 @@
         Estado.Cambio += AlCambiar;
         _vinoDeLista = Estado.VinoDeLista;
         Estado.VinoDeLista = false;
+        // También tras editar (Atrás cae en este detalle ya existente): si la entrada previa es de la app, Volver retrocede
+        if (!_vinoDeLista) _vinoDeLista = await Historia.HayEntradaPreviaAsync();
         // Carga directa o recarga en /pelicula/{id}: primero se descarga la lista (con esqueleto)
         Sincronizar();
         if (!Estado.Cargada) await Estado.IniciarAsync();
@@ -238,7 +241,7 @@
         {
             if (await Estado.EliminarAsync(pelicula))
             {
-                Navegacion.NavigateTo("");
+                await IrAListaAsync(); // sin dejar en el historial el detalle de una película que ya no existe
                 return;
             }
             _saliendo = false; // falló: EstadoLista ya mostró el aviso y se sigue en el detalle
@@ -271,16 +274,11 @@
         await IrAListaAsync();
     }
 
-    // Sin transición: si vino de la lista se retrocede en el historial; con carga directa se va a "/"
+    // Sin transición: si hay una entrada previa de la app (la lista) se retrocede; con carga directa se va a "/" con replace
     private async Task IrAListaAsync()
     {
-        if (_vinoDeLista)
-        {
-            try { await JS.InvokeVoidAsync("history.back"); return; }
-            catch (JSException) { }
-            catch (JSDisconnectedException) { return; }
-        }
-        Navegacion.NavigateTo("");
+        _saliendo = true;
+        await Historia.SalirAsync("");
     }
 
     private void IrALista() => Navegacion.NavigateTo("");

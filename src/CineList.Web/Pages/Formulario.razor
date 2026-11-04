@@ -7,6 +7,7 @@
 @inject EstadoLista Estado
 @inject IPeliculasRepository Repositorio
 @inject NavigationManager Navegacion
+@inject Historial Historia
 @inject IJSRuntime JS
 
 <PageTitle>@TituloPagina · CineList</PageTitle>
@@ -15,7 +16,7 @@
    nunca se modifica la instancia de la lista; al guardar se reemplaza con Upsert. *@
 <div class="formulario">
     <header class="barra-form">
-        <button type="button" class="boton-redondo" aria-label="Cerrar formulario" disabled="@_guardando" @onclick="Cancelar">
+        <button type="button" class="boton-redondo" aria-label="Cerrar formulario" disabled="@_guardando" @onclick="CancelarAsync">
             <span class="icono" aria-hidden="true">&#xe5cd;</span>
         </button>
         <h1 class="titulo-form">@TituloPagina</h1>
@@ -175,7 +176,7 @@
          TextoConfirmar="Descartar"
          TextoCancelar="Seguir editando"
          Peligro="true"
-         OnConfirmar="Descartar"
+         OnConfirmar="DescartarAsync"
          OnCancelar="CancelarDescarte" />
 
 @code {
@@ -412,7 +413,7 @@
         _saliendo = true;
         // Editar vuelve al detalle; crear vuelve a la lista (la película ya está en edición por si falla)
         var eraEdicion = !string.IsNullOrEmpty(Id);
-        Navegacion.NavigateTo(eraEdicion ? destino : "");
+        await Historia.SalirAsync(eraEdicion ? destino : "");
     }
 
     private async Task SacudirAsync()
@@ -423,13 +424,14 @@
         _sacudir = true;
     }
 
-    private void Cancelar()
+    private async Task CancelarAsync()
     {
         if (_saliendo || _guardando) return;
         if (HayCambios) _confirmarDescarte = true;
-        else Salir();
+        else await SalirAsync();
     }
 
+    private bool _fueRetroceso; // la navegación detenida fue Atrás del navegador
     private string? _destinoPendiente; // adónde iba el usuario cuando se detuvo la navegación
 
     private async Task AntesDeNavegar(LocationChangingContext contexto)
@@ -437,6 +439,7 @@
         if (_saliendo || _guardando || !HayCambios) return;
         contexto.PreventNavigation();
         _destinoPendiente = contexto.TargetLocation;
+        _fueRetroceso = await Historia.FueRetrocesoAsync();
         _confirmarDescarte = true;
         await InvokeAsync(StateHasChanged);
     }
@@ -447,22 +450,29 @@
         _destinoPendiente = null;
     }
 
-    private void Descartar()
+    private async Task DescartarAsync()
     {
         _confirmarDescarte = false;
         var destino = _destinoPendiente;
         _destinoPendiente = null;
-        if (destino is null) { Salir(); return; }
+        if (destino is null) { await SalirAsync(); return; }
         if (_saliendo) return;
         _saliendo = true;
+        // Atrás interceptado: se completa el retroceso (sin apilar); un enlace sigue su camino sin ensuciar el historial
+        if (_fueRetroceso)
+        {
+            try { await JS.InvokeVoidAsync("history.back"); return; }
+            catch (JSException) { }
+            catch (JSDisconnectedException) { return; }
+        }
         Navegacion.NavigateTo(destino);
     }
 
-    private void Salir()
+    private async Task SalirAsync()
     {
         if (_saliendo) return;
         _saliendo = true;
-        Navegacion.NavigateTo(_original is not null && !string.IsNullOrEmpty(Id) ? $"pelicula/{Uri.EscapeDataString(_original.Id)}" : "");
+        await Historia.SalirAsync(_original is not null && !string.IsNullOrEmpty(Id) ? $"pelicula/{Uri.EscapeDataString(_original.Id)}" : "");
     }
 
     private void IrALista() => Navegacion.NavigateTo("");

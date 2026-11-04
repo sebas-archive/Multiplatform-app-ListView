@@ -26,5 +26,6 @@ public static class Iconos
     public const string Pelicula = "\ue404";
     public const string SinConexion = "\ue2c1";
     public const string Filtros = "\ue429";
+    // MAUI no la usa: existe para que su glifo entre en la fuente de iconos reducida que comparte la versión web
     public const string MasOpciones = "\ue5d4";
 }
