@@ -10,6 +10,9 @@ namespace CineList.Views;
 public partial class DetallePage : ContentPage
 {
     private const double RadioPoster = 8; // radio de esquinas de PosterView
+    // Máximo que se espera el layout del póster real antes de saltar el vuelo; mientras tanto el
+    // superpuesto espera sobre la fila tocada, así que un equipo lento igual ve el vuelo
+    private const int EsperaLayoutMs = 600;
 
     private readonly DetalleViewModel _vm;
     private bool _animada;
@@ -131,7 +134,7 @@ public partial class DetallePage : ContentPage
         }
     }
 
-    // Espera (máx. 300 ms) a que el póster real tenga tamaño y devuelve la capa del vuelo en
+    // Espera (máx. EsperaLayoutMs) a que el póster real tenga tamaño y devuelve la capa del vuelo en
     // coordenadas de ventana; null si no hubo layout a tiempo o la página ya no está visible
     private async Task<Rect?> DestinoVueloAsync()
     {
@@ -145,7 +148,7 @@ public partial class DetallePage : ContentPage
             Poster.SizeChanged += AlMedir;
             try
             {
-                await Task.WhenAny(medido.Task, Task.Delay(300));
+                await Task.WhenAny(medido.Task, Task.Delay(EsperaLayoutMs));
             }
             finally
             {
