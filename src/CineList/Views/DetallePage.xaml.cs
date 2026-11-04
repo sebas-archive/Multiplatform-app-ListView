@@ -9,8 +9,11 @@ namespace CineList.Views;
 
 public partial class DetallePage : ContentPage
 {
+    private const double RadioPoster = 8; // radio de esquinas de PosterView
+
     private readonly DetalleViewModel _vm;
     private bool _animada;
+    private bool _volando;
     private bool _visible;
     private bool? _vistaMostrada;
 
@@ -23,6 +26,7 @@ public partial class DetallePage : ContentPage
         PintarFondo();
         // El desenfoque se aplica a la vista nativa en cuanto existe (Android 12+)
         FondoArte.HandlerChanged += (_, _) => Desenfoque.Aplicar(FondoArte, 24);
+        PosterVuelo.HandlerChanged += (_, _) => Animaciones.PrepararSuperpuesto(PosterVuelo);
     }
 
     protected override async void OnAppearing()
@@ -35,6 +39,8 @@ public partial class DetallePage : ContentPage
             app.RequestedThemeChanged += OnTemaCambiado;
         }
         PintarVelo();
+        // El origen del vuelo se toma antes de refrescar: un refresco lento no debe hacerlo caducar
+        Rect? origen = !_animada && TransicionPoster.Tomar(_vm.Id, out var o) ? o : null;
         try
         {
             if (!await _vm.RefrescarAsync())
@@ -45,7 +51,7 @@ public partial class DetallePage : ContentPage
             PintarEtiqueta(_vm.Pelicula?.Vista ?? false);
             if (_animada) return; // al volver del formulario no se repite la entrada
             _animada = true;
-            await EntradaAsync();
+            await EntradaAsync(origen);
         }
         catch (Exception ex)
         {
@@ -75,10 +81,9 @@ public partial class DetallePage : ContentPage
 
     // Entrada: si se llegó tocando una fila, el póster vuela desde ella mientras el resto aparece
     // escalonado; luego las estrellas se llenan una a una y la etiqueta hace "pop"
-    private async Task EntradaAsync()
+    private async Task EntradaAsync(Rect? origen)
     {
         var resto = new VisualElement[] { BloqueTitulo, Meta, BloqueEstado, Sinopsis, Botones };
-        var hayOrigen = TransicionPoster.Tomar(_vm.Id, out var origen); // se consume siempre
         if (Animaciones.ReducirMovimiento)
         {
             await Animaciones.EntradaDetalle(Poster, resto);
@@ -87,8 +92,8 @@ public partial class DetallePage : ContentPage
         Estrellas.PrepararLlenado();
         Etiqueta.Scale = 0;
         var fondo = Fondo.FadeTo(1, 350, Easing.CubicOut);
-        if (hayOrigen)
-            await Task.WhenAll(VolarPosterAsync(origen), Animaciones.EntradaEscalonada(resto, 50), fondo);
+        if (origen is { } inicio)
+            await Task.WhenAll(VolarPosterAsync(inicio), Animaciones.EntradaEscalonada(resto, 50), fondo);
         else
             await Task.WhenAll(Animaciones.EntradaDetalle(Poster, resto), fondo);
         await Estrellas.AnimarLlenado();
@@ -97,26 +102,32 @@ public partial class DetallePage : ContentPage
 
     private async Task VolarPosterAsync(Rect origenEnVentana)
     {
+        _volando = true;
         Poster.Opacity = 0;
-        if (await DestinoVueloAsync() is not { } capa || Coordenadas.EnVentana(Poster) is not { } real)
-        {
-            // Sin layout a tiempo: entrada normal del póster
-            await Animaciones.EntradaDetalle(Poster, []);
-            return;
-        }
-        var destino = real.Offset(-capa.X, -capa.Y);
-        var origen = origenEnVentana.Offset(-capa.X, -capa.Y);
+        var tamano = new Size(PosterVuelo.WidthRequest, PosterVuelo.HeightRequest);
+        // Sin esperar el layout: el superpuesto aparece ya sobre el póster tocado. La capa aún no está
+        // medida, así que su posición en ventana se estima con la del Shell (la página lo llena)
+        var estimada = Coordenadas.EnVentana(Shell.Current) ?? Rect.Zero;
+        Animaciones.ColocarPoster(PosterVuelo, origenEnVentana.Offset(-estimada.X, -estimada.Y), tamano, RadioPoster);
+        PosterVuelo.Opacity = 1;
         try
         {
-            AbsoluteLayout.SetLayoutBounds(PosterVuelo, destino);
-            var vuelo = Animaciones.VolarPoster(PosterVuelo, origen, destino);
-            PosterVuelo.IsVisible = true;
-            await vuelo;
+            if (await DestinoVueloAsync() is not { } capa || Coordenadas.EnVentana(Poster) is not { } real)
+            {
+                // Sin layout a tiempo: el superpuesto se desvanece y el póster real entra como siempre
+                await Task.WhenAll(PosterVuelo.FadeTo(0, 200, Easing.CubicOut), Animaciones.EntradaDetalle(Poster, []));
+                return;
+            }
+            var destino = real.Offset(-capa.X, -capa.Y);
+            var origen = origenEnVentana.Offset(-capa.X, -capa.Y);
+            await Animaciones.VolarPoster(PosterVuelo, origen, destino, radio: RadioPoster);
         }
         finally
         {
-            PosterVuelo.IsVisible = false;
+            _volando = false;
+            PosterVuelo.Opacity = 0;
             Poster.Opacity = 1;
+            AplicarParallax(Desplazamiento.ScrollY);
         }
     }
 
@@ -150,7 +161,8 @@ public partial class DetallePage : ContentPage
     private void CortarVuelo()
     {
         Animaciones.CancelarVuelo(PosterVuelo);
-        PosterVuelo.IsVisible = false;
+        PosterVuelo.AbortAnimation("FadeTo");
+        PosterVuelo.Opacity = 0;
         if (_animada) Poster.Opacity = 1;
     }
 
@@ -168,15 +180,17 @@ public partial class DetallePage : ContentPage
         AplicarParallax(Desplazamiento.ScrollY);
     }
 
-    // Parallax: el póster va a la mitad de velocidad y se encoge un poco; el fondo, más lento aún
+    // Parallax: el póster se queda un poco atrás, se encoge y se atenúa; el fondo va más lento que el contenido
     private void OnDesplazado(object? sender, ScrolledEventArgs e) => AplicarParallax(e.ScrollY);
 
     private void AplicarParallax(double y)
     {
         if (Animaciones.ReducirMovimiento) return;
         y = Math.Max(0, y); // el rebote de overscroll no mueve nada
-        Poster.TranslationY = y * 0.5;
+        // Desplazamiento corto (máx. 16) y se atenúa: así nunca tapa el género ni el título
+        Poster.TranslationY = Math.Min(y * 0.5, 16);
         Poster.Scale = 1 - Math.Min(y / 1200, 0.08);
+        if (!_volando) Poster.Opacity = 1 - Math.Min(y / 220.0, 1) * 0.7;
         // El fondo está fuera del ScrollView: subir 0.3·y es ir más lento que el contenido
         Fondo.TranslationY = -y * 0.3;
     }

@@ -96,46 +96,92 @@ public static class Animaciones
 
     private const string NombreVuelo = "VueloPoster";
 
-    // Póster que vuela de la lista al detalle. El superpuesto ya está dispuesto en el rectángulo
-    // destino; se lleva con traslación + escala (pivote arriba a la izquierda) desde el origen.
+    // Cierre del vuelo en curso por elemento: CancelarVuelo lo invoca para que la tarea siempre termine
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<VisualElement, Action> FinVuelo = new();
+
+    // Póster superpuesto: está dispuesto en (0, 0) de su capa con el tamaño final y se coloca sobre
+    // cualquier rectángulo de la capa solo con traslación + escala.
     // Las esquinas redondeadas se compensan para verse siempre del mismo radio en pantalla.
-    public static Task VolarPoster(VisualElement superpuesto, Rect origen, Rect destino, uint ms = 420)
+    public static void ColocarPoster(VisualElement superpuesto, Rect rect, Size tamano, double radio)
     {
-        if (ReducirMovimiento || destino.Width <= 0 || destino.Height <= 0) return Task.CompletedTask;
-        var tcs = new TaskCompletionSource();
-        var escalaX = origen.Width / destino.Width;
-        var escalaY = origen.Height / destino.Height;
-        var dx = origen.X - destino.X;
-        var dy = origen.Y - destino.Y;
-        var esquinas = (superpuesto as Border)?.StrokeShape as RoundRectangle;
-        var radio = esquinas?.CornerRadius.TopLeft ?? 0;
-
-        void Paso(double t)
-        {
-            var sx = escalaX + (1 - escalaX) * t;
-            var sy = escalaY + (1 - escalaY) * t;
-            superpuesto.ScaleX = sx;
-            superpuesto.ScaleY = sy;
-            superpuesto.TranslationX = dx * (1 - t);
-            superpuesto.TranslationY = dy * (1 - t);
-            if (esquinas is not null) esquinas.CornerRadius = radio / Math.Max(Math.Min(sx, sy), 0.05);
-        }
-
+        if (tamano.Width <= 0 || tamano.Height <= 0) return;
+        var sx = rect.Width / tamano.Width;
+        var sy = rect.Height / tamano.Height;
         superpuesto.AnchorX = 0;
         superpuesto.AnchorY = 0;
+        PrepararSuperpuesto(superpuesto);
+        superpuesto.ScaleX = sx;
+        superpuesto.ScaleY = sy;
+        superpuesto.TranslationX = rect.X;
+        superpuesto.TranslationY = rect.Y;
+        if ((superpuesto as Border)?.StrokeShape is RoundRectangle esquinas)
+            esquinas.CornerRadius = radio / Math.Max(Math.Min(sx, sy), 0.05);
+    }
+
+    // Deja la vista nativa del superpuesto lista para colocarlo con traslación + escala:
+    // - pivote arriba a la izquierda: Anchor 0 no basta, porque MAUI solo escribe el pivote si difiere
+    //   del actual y una vista sin layout ya reporta 0 (Android seguiría usando el centro);
+    // - un superpuesto InputTransparent va dentro de un contenedor nativo que recibe las transformaciones;
+    //   si la vista interna alcanzó a recibir alguna antes de crearse el contenedor, se mueve a este.
+    // Llamar también cuando se crea el handler.
+    public static void PrepararSuperpuesto(VisualElement v)
+    {
+#if ANDROID
+        if (v.Handler is not IViewHandler { PlatformView: Android.Views.View interna } handler) return;
+        var exterior = handler.ContainerView as Android.Views.View ?? interna;
+        exterior.PivotX = 0;
+        exterior.PivotY = 0;
+        if (exterior == interna || (interna.ScaleX == 1 && interna.ScaleY == 1
+            && interna.TranslationX == 0 && interna.TranslationY == 0)) return;
+        // MAUI no volverá a escribir esos valores (no cambiaron): se pasan al contenedor
+        exterior.ScaleX = interna.ScaleX;
+        exterior.ScaleY = interna.ScaleY;
+        exterior.TranslationX = interna.TranslationX;
+        exterior.TranslationY = interna.TranslationY;
+        interna.TranslationX = 0;
+        interna.TranslationY = 0;
+        interna.ScaleX = 1;
+        interna.ScaleY = 1;
+#endif
+    }
+
+    // Póster que vuela de la lista al detalle: de origen a destino (coordenadas de la capa).
+    // La tarea termina siempre, también si el vuelo se cancela; al final queda en el destino.
+    // radio: el de las esquinas en pantalla (el del póster, 8)
+    public static Task VolarPoster(VisualElement superpuesto, Rect origen, Rect destino, uint ms = 420, double radio = 8)
+    {
+        var tamano = new Size(superpuesto.WidthRequest, superpuesto.HeightRequest);
+        if (ReducirMovimiento || tamano.Width <= 0 || tamano.Height <= 0) return Task.CompletedTask;
+        CancelarVuelo(superpuesto);
+        var tcs = new TaskCompletionSource();
+
+        void Paso(double t) => ColocarPoster(superpuesto, new Rect(
+            origen.X + (destino.X - origen.X) * t,
+            origen.Y + (destino.Y - origen.Y) * t,
+            origen.Width + (destino.Width - origen.Width) * t,
+            origen.Height + (destino.Height - origen.Height) * t), tamano, radio);
+
+        void Terminar()
+        {
+            if (!tcs.TrySetResult()) return;
+            FinVuelo.Remove(superpuesto);
+            Paso(1);
+            if ((superpuesto as Border)?.StrokeShape is RoundRectangle esquinas) esquinas.CornerRadius = radio;
+        }
+
+        FinVuelo.AddOrUpdate(superpuesto, Terminar);
         Paso(0);
         new Animation(Paso, 0, 1, Easing.CubicOut).Commit(superpuesto, NombreVuelo, 16, ms,
-            finished: (_, _) =>
-            {
-                Paso(1);
-                if (esquinas is not null) esquinas.CornerRadius = radio;
-                tcs.TrySetResult();
-            });
+            finished: (_, _) => Terminar()); // cancelado o no, la tarea termina
         return tcs.Task;
     }
 
-    // Corta el vuelo en curso (la tarea de VolarPoster termina en seguida)
-    public static void CancelarVuelo(VisualElement superpuesto) => superpuesto.AbortAnimation(NombreVuelo);
+    // Corta el vuelo en curso; la tarea de VolarPoster termina en el acto
+    public static void CancelarVuelo(VisualElement superpuesto)
+    {
+        superpuesto.AbortAnimation(NombreVuelo);
+        if (FinVuelo.TryGetValue(superpuesto, out var terminar)) terminar();
+    }
 
     // Aparece desde escala 0 con "pop" (0 -> 1.15 -> 1)
     public static async Task PopEntrada(VisualElement v)

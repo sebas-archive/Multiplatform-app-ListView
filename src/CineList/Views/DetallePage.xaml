@@ -140,11 +140,18 @@
             </ScrollView>
         </Grid>
 
+        <!-- Póster que vuela: fijo en (0,0) con el tamaño del póster real; se mueve solo con traslación y escala.
+             Siempre con layout (oculto con opacidad 0) para poder mostrarlo en el primer cuadro -->
         <AbsoluteLayout x:Name="CapaVuelo" InputTransparent="True" CascadeInputTransparent="True">
             <controles:PosterView
                 x:Name="PosterVuelo"
                 Pelicula="{Binding Pelicula}"
-                IsVisible="False" />
+                WidthRequest="220"
+                HeightRequest="320"
+                AbsoluteLayout.LayoutBounds="0,0,220,320"
+                AnchorX="0"
+                AnchorY="0"
+                Opacity="0" />
         </AbsoluteLayout>
 
     </Grid>
