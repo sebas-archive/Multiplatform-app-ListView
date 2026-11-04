@@ -1,0 +1,228 @@
+@page "/"
+@implements IDisposable
+@inject EstadoLista Estado
+@inject TemaService Tema
+@inject IJSRuntime JS
+
+<PageTitle>CineList</PageTitle>
+
+<header class="cabecera">
+    <h1 class="titulo-app" tabindex="-1">CineList</h1>
+    <div class="botones-cabecera">
+        <button class="boton-redondo @(Estado.Refrescando ? "girando" : "")" type="button" @onclick="Estado.RecargarAsync"
+                disabled="@(Estado.Cargando || Estado.Refrescando)" aria-label="Recargar">
+            <span class="icono" aria-hidden="true">&#xe5d5;</span>
+        </button>
+        <button class="boton-redondo" type="button" @onclick="Tema.AlternarAsync"
+                aria-label="@(Tema.Oscuro ? "Cambiar a tema claro" : "Cambiar a tema oscuro")">
+            <span class="icono" aria-hidden="true">@(Tema.Oscuro ? "" : "")</span>
+        </button>
+    </div>
+</header>
+
+@* Búsqueda por título o director + botón Filtros con insignia *@
+<div class="barra">
+    <label class="busqueda">
+        <span class="icono" aria-hidden="true">&#xef7a;</span>
+        <input type="search" placeholder="Buscar título o director" aria-label="Buscar título o director"
+               autocomplete="off" spellcheck="false"
+               @bind="_texto" @bind:event="oninput" @bind:after="CambiarTexto" />
+        @if (_texto.Length > 0)
+        {
+            <button type="button" class="limpiar" aria-label="Borrar búsqueda" @onclick="BorrarTexto">
+                <span class="icono" aria-hidden="true">&#xe5cd;</span>
+            </button>
+        }
+    </label>
+    <button type="button" class="boton-filtros" @onclick="AbrirPanel"
+            aria-label="@(Estado.Criterios.CuantosActivos > 0 ? $"Filtros y orden, {Estado.Criterios.CuantosActivos} activos" : "Filtros y orden")">
+        <span class="icono" aria-hidden="true">&#xe429;</span>
+        <span>Filtros</span>
+        @if (Estado.Criterios.CuantosActivos > 0)
+        {
+            <span class="insignia" aria-hidden="true">@Estado.Criterios.CuantosActivos</span>
+        }
+    </button>
+</div>
+
+@* Chips de estado *@
+<div class="chips" role="group" aria-label="Estado">
+    @foreach (var (estado, texto) in Chips)
+    {
+        <button type="button" class="chip @(Estado.Criterios.Estado == estado ? "activo" : "")"
+                aria-pressed="@(Estado.Criterios.Estado == estado ? "true" : "false")"
+                @onclick="() => Estado.CambiarEstadoAsync(estado)">@texto</button>
+    }
+</div>
+
+@if (Estado.Criterios.CuantosActivos > 0)
+{
+    <p class="activos">Activos: @Estado.TextoActivos</p>
+}
+
+<div class="contenido">
+    @if (Estado.Cargando)
+    {
+        <div class="esqueleto" aria-busy="true" aria-label="Cargando películas">
+            @for (var i = 0; i < 5; i++)
+            {
+                <div class="fila-esqueleto">
+                    <div class="caja poster-esqueleto"></div>
+                    <div class="barras">
+                        <div class="caja" style="width: 150px; height: 12px"></div>
+                        <div class="caja" style="width: 110px; height: 10px"></div>
+                        <div class="caja" style="width: 70px; height: 10px"></div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else if (Estado.Error is not null)
+    {
+        <div class="panel-estado" role="alert">
+            <span class="icono icono-estado peligro" aria-hidden="true">@(Estado.ErrorSinConexion ? "" : "")</span>
+            <p class="mensaje">@Estado.Error</p>
+            <p class="secundario">Revisa tu conexión e inténtalo de nuevo.</p>
+            <button type="button" class="boton secundario-btn" @onclick="Estado.CargarAsync">Reintentar</button>
+        </div>
+    }
+    else if (Estado.Vacia)
+    {
+        <div class="panel-estado">
+            <span class="icono icono-estado acento" aria-hidden="true">&#xe404;</span>
+            <p class="mensaje">Tu lista está vacía</p>
+            <p class="secundario">Agrega tu primera película con el botón + o carga algunos ejemplos.</p>
+            <button type="button" class="boton primario-btn" @onclick="Estado.CargarEjemplosAsync">Cargar ejemplos</button>
+        </div>
+    }
+    else if (Estado.SinResultadosConFiltros)
+    {
+        <div class="panel-estado arriba">
+            <span class="icono icono-chico" aria-hidden="true">&#xe429;</span>
+            <p class="secundario">Ninguna película coincide con los filtros</p>
+            @if (Estado.PuedeLimpiarFiltros)
+            {
+                <button type="button" class="boton secundario-btn" @onclick="Estado.LimpiarFiltros">Limpiar filtros</button>
+            }
+        </div>
+    }
+    else if (Estado.SinResultadosSimple)
+    {
+        <div class="panel-estado arriba">
+            <span class="icono icono-chico" aria-hidden="true">&#xef7a;</span>
+            <p class="secundario">No hay películas que coincidan</p>
+        </div>
+    }
+    else
+    {
+        <div class="lista @(Estado.AnimarEntrada ? "entrando" : "") @(_saliendo ? "saliendo" : "")" @key="Estado.VersionEntrada">
+            @{ var indice = 0; }
+            @foreach (var grupo in Estado.Grupos)
+            {
+                <section class="grupo" @key="grupo.Genero">
+                    @if (Estado.Agrupado)
+                    {
+                        <h2 class="genero">@grupo.Genero</h2>
+                    }
+                    @foreach (var pelicula in grupo)
+                    {
+                        <FilaPelicula @key="pelicula.Id" Pelicula="pelicula" Indice="Math.Min(indice++, MaxFilasAnimadas)"
+                                      OnEliminar="PedirEliminar" />
+                    }
+                </section>
+            }
+        </div>
+    }
+
+    @if (Estado.MostrarResumen && Estado.Cargada)
+    {
+        <p class="resumen">@Estado.Resultado.Resumen</p>
+    }
+</div>
+
+@if (Estado.Aviso is not null)
+{
+    <div class="aviso" role="status">@Estado.Aviso</div>
+}
+
+<a class="fab" href="nueva" aria-label="Agregar película">
+    <span class="icono" aria-hidden="true">&#xe145;</span>
+</a>
+
+<Dialogo Visible="_aEliminar is not null"
+         Titulo="Eliminar película"
+         Texto="@($"¿Eliminar \"{_aEliminar?.Titulo}\"?")"
+         TextoConfirmar="Eliminar"
+         TextoCancelar="Cancelar"
+         Peligro="true"
+         OnConfirmar="ConfirmarEliminarAsync"
+         OnCancelar="() => _aEliminar = null" />
+
+@code {
+    private const int MaxFilasAnimadas = 10;
+
+    private static readonly (FiltroEstado Estado, string Texto)[] Chips =
+    [
+        (FiltroEstado.Todas, "Todas"),
+        (FiltroEstado.Vistas, "Vistas"),
+        (FiltroEstado.Pendientes, "Pendientes"),
+    ];
+
+    private string _texto = "";
+    private bool _saliendo;
+    private Pelicula? _aEliminar;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _texto = Estado.Criterios.Texto;
+        Estado.Cambio += Redibujar;
+        Estado.AnimarSalidaLista = AnimarSalidaAsync;
+        Tema.Cambio += Redibujar;
+        await Tema.InicializarAsync();
+        await Estado.IniciarAsync();
+    }
+
+    private void Redibujar() => InvokeAsync(StateHasChanged);
+
+    private void CambiarTexto() => Estado.CambiarTexto(_texto);
+
+    private void BorrarTexto()
+    {
+        _texto = "";
+        Estado.CambiarTexto("");
+    }
+
+    /// <summary>Abre el panel "Filtros y orden" (llega en la Task 3).</summary>
+    private void AbrirPanel()
+    {
+    }
+
+    // Antes de reconstruir por chip u orden, la lista se desvanece en 120 ms
+    private async Task AnimarSalidaAsync()
+    {
+        bool reducir;
+        try { reducir = await JS.InvokeAsync<bool>("cinelist.reducirMovimiento"); }
+        catch (JSException) { reducir = true; }
+        if (reducir) return;
+        _saliendo = true;
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(120);
+        _saliendo = false; // la reconstrucción que sigue ya pinta la lista nueva visible
+    }
+
+    private void PedirEliminar(Pelicula pelicula) => _aEliminar = pelicula;
+
+    private async Task ConfirmarEliminarAsync()
+    {
+        var pelicula = _aEliminar;
+        _aEliminar = null;
+        if (pelicula is not null) await Estado.EliminarAsync(pelicula);
+    }
+
+    public void Dispose()
+    {
+        Estado.Cambio -= Redibujar;
+        Tema.Cambio -= Redibujar;
+        if (Estado.AnimarSalidaLista == (Func<Task>)AnimarSalidaAsync) Estado.AnimarSalidaLista = null;
+    }
+}

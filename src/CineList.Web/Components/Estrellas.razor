@@ -1,0 +1,14 @@
+@* Fila de 5 estrellas de solo lectura: llenas con la fuente rellena, vacías en contorno con menos opacidad *@
+<span class="estrellas" role="img" aria-label="@Etiqueta" style="font-size: @(Tamano)px">
+    @for (var i = 1; i <= 5; i++)
+    {
+        <span class="@(i <= Valor ? "icono-lleno llena" : "icono vacia")" aria-hidden="true">&#xf09a;</span>
+    }
+</span>
+
+@code {
+    [Parameter] public int Valor { get; set; }
+    [Parameter] public int Tamano { get; set; } = 13;
+
+    private string Etiqueta => Valor == 0 ? "Sin calificar" : $"{Valor} de 5 estrellas";
+}

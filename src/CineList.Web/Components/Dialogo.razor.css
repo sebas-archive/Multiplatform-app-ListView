@@ -1,0 +1,40 @@
+.velo {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    animation: velo-entra 180ms ease-out;
+}
+.dialogo {
+    width: 100%;
+    max-width: 360px;
+    background: var(--superficie);
+    color: var(--texto);
+    border: 1px solid var(--borde-superficie);
+    border-radius: 20px;
+    padding: 22px 20px 18px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    animation: dialogo-entra 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.titulo { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+.texto { color: var(--texto-secundario); font-size: 15px; overflow-wrap: anywhere; }
+.botones { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.boton {
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 14px;
+    font-weight: 600;
+    font-size: 15px;
+    border: 1px solid transparent;
+}
+.boton:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.secundario { background: var(--campo); border-color: var(--borde-campo); color: var(--texto); }
+.primario { background: var(--acento); color: var(--acento-texto); }
+.peligro { background: transparent; border-color: var(--peligro); color: var(--peligro); }
+
+@keyframes velo-entra { from { opacity: 0; } }
+@keyframes dialogo-entra { from { opacity: 0; transform: scale(0.94); } }

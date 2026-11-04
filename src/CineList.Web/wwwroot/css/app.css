@@ -92,3 +92,11 @@ a { color: var(--acento); }
         transition: none !important;
     }
 }
+
+/* Partículas de la ráfaga (las crea cinelist.rafaga en <body> y las quita al terminar) */
+.particula {
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 200;
+}

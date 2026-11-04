@@ -26,4 +26,5 @@ public static class Iconos
     public const string Pelicula = "\ue404";
     public const string SinConexion = "\ue2c1";
     public const string Filtros = "\ue429";
+    public const string MasOpciones = "\ue5d4";
 }

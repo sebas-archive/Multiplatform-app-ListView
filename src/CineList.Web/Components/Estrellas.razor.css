@@ -1,0 +1,7 @@
+.estrellas {
+    display: inline-flex;
+    gap: 1px;
+    color: var(--acento);
+    line-height: 1;
+}
+.vacia { opacity: 0.45; }

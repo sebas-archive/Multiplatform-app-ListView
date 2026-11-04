@@ -1,0 +1,48 @@
+@* Diálogo de confirmación modal. Esc o clic fuera cancelan; el foco empieza en "Cancelar". *@
+@if (Visible)
+{
+    <div class="velo" @onclick="CancelarAsync">
+        <div class="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="dialogo-titulo" aria-describedby="dialogo-texto"
+             @onclick:stopPropagation @onkeydown="TeclaAsync">
+            <h2 id="dialogo-titulo" class="titulo">@Titulo</h2>
+            <p id="dialogo-texto" class="texto">@Texto</p>
+            <div class="botones">
+                <button type="button" class="boton secundario" @ref="_cancelar" @onclick="CancelarAsync">@TextoCancelar</button>
+                <button type="button" class="boton @(Peligro ? "peligro" : "primario")" @onclick="ConfirmarAsync">@TextoConfirmar</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Titulo { get; set; } = "";
+    [Parameter] public string Texto { get; set; } = "";
+    [Parameter] public string TextoConfirmar { get; set; } = "Aceptar";
+    [Parameter] public string TextoCancelar { get; set; } = "Cancelar";
+    [Parameter] public bool Peligro { get; set; }
+    [Parameter] public EventCallback OnConfirmar { get; set; }
+    [Parameter] public EventCallback OnCancelar { get; set; }
+
+    private ElementReference _cancelar;
+    private bool _enfocar;
+
+    protected override void OnParametersSet()
+    {
+        if (Visible) _enfocar = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_enfocar || !Visible) return;
+        _enfocar = false;
+        try { await _cancelar.FocusAsync(); }
+        catch (JSException) { }
+        catch (InvalidOperationException) { }
+    }
+
+    private Task CancelarAsync() => OnCancelar.InvokeAsync();
+    private Task ConfirmarAsync() => OnConfirmar.InvokeAsync();
+
+    private Task TeclaAsync(KeyboardEventArgs e) => e.Key == "Escape" ? CancelarAsync() : Task.CompletedTask;
+}

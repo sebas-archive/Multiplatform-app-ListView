@@ -8,9 +8,11 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-builder.Services.AddScoped(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(20) });
-builder.Services.AddScoped<IPeliculasRepository, PeliculasRepository>();
-builder.Services.AddScoped<AlmacenLocal>();
-builder.Services.AddScoped<TemaService>();
+// En WASM hay un solo usuario por pestaña: los servicios son singleton (EstadoLista conserva la lista entre páginas)
+builder.Services.AddSingleton(_ => new HttpClient { Timeout = TimeSpan.FromSeconds(20) });
+builder.Services.AddSingleton<IPeliculasRepository>(sp => new PeliculasRepository(sp.GetRequiredService<HttpClient>()));
+builder.Services.AddSingleton<AlmacenLocal>();
+builder.Services.AddSingleton<TemaService>();
+builder.Services.AddSingleton<EstadoLista>();
 
 await builder.Build().RunAsync();

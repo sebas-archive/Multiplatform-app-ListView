@@ -1,0 +1,34 @@
+@using CineList.Core.Models
+@using CineList.Core.Poster
+@* Póster: la foto guardada (base64) o un degradado de la paleta con las iniciales del título.
+   El tamaño lo da quien lo usa (clase "poster" + Clase). *@
+<div class="poster @Clase" style="@Estilo" aria-hidden="true">
+    @if (TieneFoto)
+    {
+        <img src="data:image/jpeg;base64,@Pelicula.PosterBase64" alt="" draggable="false" />
+    }
+    else
+    {
+        <span class="iniciales" style="font-size: @(TamanoIniciales)px">@PosterGenerado.Iniciales(Pelicula.Titulo)</span>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Pelicula Pelicula { get; set; } = default!;
+    [Parameter] public string? Clase { get; set; }
+    /// <summary>Tamaño de las iniciales en px (por defecto, el de la fila de la lista).</summary>
+    [Parameter] public double TamanoIniciales { get; set; } = 14;
+
+    private bool TieneFoto => !string.IsNullOrEmpty(Pelicula.PosterBase64);
+
+    private string? Estilo
+    {
+        get
+        {
+            if (TieneFoto) return null;
+            var paleta = PosterGenerado.PaletaHex;
+            var (inicio, fin) = paleta[PosterGenerado.IndicePaleta(Pelicula.Titulo, paleta.Count)];
+            return $"background: linear-gradient(160deg, {inicio}, {fin})";
+        }
+    }
+}

@@ -1,0 +1,130 @@
+/* Tarjeta de la fila: alto 80 (88 con el margen), como la celda del APK */
+.fila {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 80px;
+    margin: 4px 0;
+    padding: 8px 4px 8px 8px;
+    border-radius: 14px;
+    background: var(--superficie);
+    border: 1px solid var(--borde-superficie);
+    cursor: pointer;
+    transition: transform 150ms ease, border-color 150ms ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.fila:hover { border-color: var(--borde-campo); }
+/* Con el menú abierto no se escala: un transform haría que la capa fija del menú se encoja a la fila */
+.fila:not(.con-menu):active { transform: scale(0.99); }
+.fila:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.fila.con-menu { z-index: 30; }
+
+::deep .poster-fila { width: 44px; height: 64px; }
+
+.textos {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.titulo {
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.meta {
+    font-size: 12px;
+    color: var(--texto-secundario);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.etiqueta {
+    align-self: flex-start;
+    display: inline-block;
+    flex: none;
+    padding: 3px 8px;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    transform-origin: center;
+    backface-visibility: hidden;
+}
+.etiqueta.vista { color: var(--vista-texto); background: var(--vista-fondo); }
+.etiqueta.pendiente { color: var(--pendiente-texto); background: var(--pendiente-fondo); }
+
+.acciones { position: relative; flex: none; align-self: center; }
+
+.boton-menu {
+    width: 36px;
+    height: 44px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--texto-secundario);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background-color 150ms ease;
+}
+.boton-menu:hover, .boton-menu[aria-expanded="true"] { background: var(--campo); color: var(--texto); }
+.boton-menu:focus-visible { outline: 2px solid var(--acento); outline-offset: 1px; }
+.boton-menu .icono { font-size: 22px; }
+
+/* Capa transparente: un clic fuera del menú lo cierra */
+.fondo-menu {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    cursor: default;
+}
+
+.menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 2;
+    min-width: 190px;
+    padding: 6px;
+    border-radius: 14px;
+    background: var(--superficie);
+    border: 1px solid var(--borde-campo);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    transform-origin: top right;
+    animation: menu-entra 160ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.opcion {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--texto);
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+}
+.opcion:hover, .opcion:focus-visible { background: var(--campo); outline: none; }
+.opcion .icono { font-size: 20px; color: var(--texto-secundario); }
+.opcion.peligro, .opcion.peligro .icono { color: var(--peligro); }
+
+@keyframes menu-entra { from { opacity: 0; transform: scale(0.92); } }
+
+/* Entrada escalonada: la lista pone .entrando al cargar o cambiar chip/filtros (40 ms por fila, máx. 10).
+   "backwards" aplica el primer cuadro durante el retraso y no deja transform al terminar. */
+.entrando .fila {
+    animation: fila-entra 300ms cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+    animation-delay: calc(var(--i, 0) * 40ms);
+}
+@keyframes fila-entra { from { opacity: 0; transform: translateY(14px); } }

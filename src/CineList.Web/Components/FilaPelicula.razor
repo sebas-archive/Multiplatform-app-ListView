@@ -1,0 +1,138 @@
+@implements IAsyncDisposable
+@inject EstadoLista Estado
+@inject NavigationManager Navegacion
+@inject IJSRuntime JS
+
+@* Fila de la lista (como la celda del APK): póster, título, datos, estrellas, etiqueta y menú ⋮.
+   Clic en cualquier parte salvo el menú abre el detalle. *@
+<div class="fila @(_menuAbierto ? "con-menu" : "")" style="--i: @Indice" role="link" tabindex="0"
+     aria-label="@($"{Pelicula.Titulo}, {TextoPelicula.Etiqueta(_vistaMostrada).ToLowerInvariant()}")"
+     @onclick="Abrir" @onkeydown="TeclaFila">
+    <PosterImagen Pelicula="Pelicula" Clase="poster-fila" />
+    <div class="textos">
+        <span class="titulo">@Pelicula.Titulo</span>
+        <span class="meta">@TextoPelicula.Meta(Pelicula)</span>
+        <Estrellas Valor="Pelicula.Calificacion" Tamano="13" />
+    </div>
+    <span class="etiqueta @(_vistaMostrada ? "vista" : "pendiente")" @ref="_etiqueta">@TextoPelicula.Etiqueta(_vistaMostrada)</span>
+    <div class="acciones" @onclick:stopPropagation @onkeydown:stopPropagation>
+        <button type="button" class="boton-menu" @ref="_botonMenu" aria-label="Más opciones" aria-haspopup="menu"
+                aria-expanded="@(_menuAbierto ? "true" : "false")" @onclick="AlternarMenu">
+            <span class="icono" aria-hidden="true">&#xe5d4;</span>
+        </button>
+        @if (_menuAbierto)
+        {
+            <div class="fondo-menu" @onclick="CerrarMenu"></div>
+            <div class="menu" role="menu" @onkeydown="TeclaMenu">
+                <button type="button" role="menuitem" class="opcion" @ref="_primeraOpcion" @onclick="AlternarVistaAsync">
+                    <span class="icono" aria-hidden="true">@(Pelicula.Vista ? "" : "")</span>
+                    @(Pelicula.Vista ? "Marcar pendiente" : "Marcar vista")
+                </button>
+                <button type="button" role="menuitem" class="opcion peligro" @onclick="EliminarAsync">
+                    <span class="icono" aria-hidden="true">&#xe92e;</span>
+                    Eliminar
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Pelicula Pelicula { get; set; } = default!;
+    /// <summary>Posición en la entrada escalonada (0..10).</summary>
+    [Parameter] public int Indice { get; set; }
+    /// <summary>La página pide confirmación y elimina.</summary>
+    [Parameter] public EventCallback<Pelicula> OnEliminar { get; set; }
+
+    private ElementReference _etiqueta;
+    private ElementReference _primeraOpcion;
+    private ElementReference _botonMenu;
+    private bool _devolverFoco;
+    private bool _menuAbierto;
+    private bool _enfocarMenu;
+    private bool _girando;
+    private bool _vistaMostrada;
+    private bool _desechada;
+
+    protected override void OnParametersSet()
+    {
+        // Durante el giro la etiqueta conserva el texto anterior hasta la mitad de la animación
+        if (!_girando) _vistaMostrada = Pelicula.Vista;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_enfocarMenu && !_devolverFoco) return;
+        var destino = _enfocarMenu ? _primeraOpcion : _botonMenu;
+        _enfocarMenu = _devolverFoco = false;
+        try { await destino.FocusAsync(); }
+        catch (JSException) { }
+        catch (InvalidOperationException) { }
+    }
+
+    private void Abrir() =>
+        Navegacion.NavigateTo($"pelicula/{Uri.EscapeDataString(Pelicula.Id)}");
+
+    private void TeclaFila(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " ") Abrir();
+    }
+
+    private void AlternarMenu()
+    {
+        _menuAbierto = !_menuAbierto;
+        _enfocarMenu = _menuAbierto;
+    }
+
+    private void CerrarMenu() => _menuAbierto = false;
+
+    private void TeclaMenu(KeyboardEventArgs e)
+    {
+        if (e.Key != "Escape") return;
+        _menuAbierto = false;
+        _devolverFoco = true; // con teclado, el foco vuelve al botón ⋮
+    }
+
+    // Marcar vista/pendiente: se guarda y, si la fila sigue en la lista, la etiqueta gira;
+    // al pasar a VISTA sale una ráfaga de puntos desde ella
+    private async Task AlternarVistaAsync()
+    {
+        _menuAbierto = false;
+        if (_girando) return;
+        _girando = true;
+        try
+        {
+            if (!await Estado.AlternarVistaAsync(Pelicula) || _desechada) return;
+            var vista = !_vistaMostrada;
+            if (vista) await JS.InvokeVoidAsync("cinelist.rafaga", _etiqueta, 6, 90, 270);
+            await JS.InvokeVoidAsync("cinelist.girarIda", _etiqueta);
+            if (_desechada) return;
+            _vistaMostrada = vista;
+            StateHasChanged();
+            await JS.InvokeVoidAsync("cinelist.girarVuelta", _etiqueta);
+        }
+        catch (JSException ex) { Console.WriteLine($"[FilaPelicula] {ex.Message}"); }
+        catch (JSDisconnectedException) { }
+        finally
+        {
+            _girando = false;
+            if (!_desechada)
+            {
+                _vistaMostrada = Estado.Buscar(Pelicula.Id)?.Vista ?? Pelicula.Vista;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task EliminarAsync()
+    {
+        _menuAbierto = false;
+        await OnEliminar.InvokeAsync(Pelicula);
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _desechada = true;
+        return ValueTask.CompletedTask;
+    }
+}
