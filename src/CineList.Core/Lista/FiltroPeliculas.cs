@@ -23,7 +23,7 @@ public static class FiltroPeliculas
     private const string Base        = "aaaaaaceeeeiiiinooooouuuuyy";
 
     /// <summary>Quita tildes y pasa a minúsculas.</summary>
-    private static string Normalizar(string? texto)
+    internal static string Normalizar(string? texto)
     {
         if (string.IsNullOrEmpty(texto)) return "";
         var sb = new StringBuilder(texto.Length);
@@ -42,12 +42,12 @@ public static class FiltroPeliculas
     // la comparación nativa no lo hace, así que se usa el texto normalizado.
     private static readonly bool CulturaDisponible = Comparador.Compare("a", "Á", Opciones) == 0;
 
-    private static int Comparar(string a, string b) =>
+    internal static int Comparar(string a, string b) =>
         CulturaDisponible
             ? Comparador.Compare(a, b, Opciones)
             : string.CompareOrdinal(Normalizar(a), Normalizar(b));
 
-    private static readonly IEqualityComparer<string> Igualdad =
+    internal static readonly IEqualityComparer<string> Igualdad =
         EqualityComparer<string>.Create((a, b) => Comparar(a!, b!) == 0, s => Normalizar(s).GetHashCode());
 
     public static IReadOnlyList<Pelicula> Filtrar(IEnumerable<Pelicula> todas, string? texto, FiltroEstado estado)
@@ -83,5 +83,60 @@ public static class FiltroPeliculas
         var total = lista.Count;
         var vistas = lista.Count(p => p.Vista);
         return $"{total} {(total == 1 ? "película" : "películas")} · {vistas} {(vistas == 1 ? "vista" : "vistas")}";
+    }
+
+    private static readonly IComparer<string> ComparadorTitulos = Comparer<string>.Create(Comparar);
+
+    /// <summary>Aplica texto, estado, géneros, década y calificación; luego ordena según <see cref="CriteriosFiltro.Orden"/>.</summary>
+    public static ResultadoFiltro Aplicar(IEnumerable<Pelicula> todas, CriteriosFiltro c)
+    {
+        var filtradas = Filtrar(todas, c.Texto, c.Estado)
+            .Where(p => c.Generos.Count == 0
+                || c.Generos.Contains(string.IsNullOrWhiteSpace(p.Genero) ? SinGenero : p.Genero.Trim()))
+            .Where(p => DecadaTexto.Contiene(c.Decada, p.Anio))
+            .Where(p => p.Calificacion >= c.CalificacionMinima)
+            .ToList();
+        var resumen = Resumen(filtradas);
+
+        if (c.Orden == OrdenPeliculas.Genero)
+            return new ResultadoFiltro(Agrupar(filtradas), true, filtradas.Count, resumen);
+
+        var ordenadas = c.Orden switch
+        {
+            OrdenPeliculas.Titulo => filtradas.OrderBy(p => p.Titulo, ComparadorTitulos),
+            OrdenPeliculas.Anio => filtradas.OrderByDescending(p => p.Anio).ThenBy(p => p.Titulo, ComparadorTitulos),
+            OrdenPeliculas.Calificacion => filtradas.OrderByDescending(p => p.Calificacion).ThenBy(p => p.Titulo, ComparadorTitulos),
+            _ => filtradas.OrderByDescending(p => p.CreadaEn).ThenBy(p => p.Titulo, ComparadorTitulos),
+        };
+        return new ResultadoFiltro([new GrupoPeliculas("", ordenadas)], false, filtradas.Count, resumen);
+    }
+
+    public static int Contar(IEnumerable<Pelicula> todas, CriteriosFiltro c) => Aplicar(todas, c).Total;
+
+    /// <summary>Géneros fijos y de los datos, sin duplicados (ignora mayúsculas/tildes), con "Sin género" al final si hace falta.</summary>
+    public static IReadOnlyList<string> GenerosDisponibles(IEnumerable<Pelicula> todas)
+    {
+        var lista = todas as ICollection<Pelicula> ?? todas.ToList();
+        var vistos = new HashSet<string>(Igualdad) { SinGenero };
+        var generos = new List<string>();
+        foreach (var g in Generos.Fijos.Concat(lista.Select(p => p.Genero?.Trim() ?? "")))
+            if (g.Length > 0 && vistos.Add(g)) generos.Add(g);
+        generos.Sort(ComparadorTitulos);
+        if (lista.Any(p => string.IsNullOrWhiteSpace(p.Genero) || Igualdad.Equals(p.Genero.Trim(), SinGenero)))
+            generos.Add(SinGenero);
+        return generos;
+    }
+
+    /// <summary>Descripción corta de los criterios activos; "" si no hay ninguno.</summary>
+    public static string TextoActivos(CriteriosFiltro c)
+    {
+        var partes = new List<string>();
+        if (c.Generos.Count > 0)
+            partes.Add(string.Join(", ", c.Generos.OrderBy(g => g, ComparadorTitulos)));
+        if (c.Decada != Decada.Todas) partes.Add(DecadaTexto.Etiqueta(c.Decada));
+        if (c.CalificacionMinima > 0)
+            partes.Add($"{c.CalificacionMinima}+ {(c.CalificacionMinima == 1 ? "estrella" : "estrellas")}");
+        if (c.Orden != OrdenPeliculas.Genero) partes.Add($"orden {OrdenPeliculasTexto.Etiqueta(c.Orden)}");
+        return string.Join(" · ", partes);
     }
 }

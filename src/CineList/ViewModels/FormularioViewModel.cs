@@ -16,12 +16,6 @@ public partial class FormularioViewModel(
     PeliculasViewModel lista, IPeliculasRepository repositorio, PosterService posters)
     : ObservableObject, IQueryAttributable
 {
-    private static readonly string[] GenerosFijos =
-    [
-        "Acción", "Animación", "Ciencia ficción", "Comedia", "Documental",
-        "Drama", "Fantasía", "Romance", "Suspenso", "Terror",
-    ];
-
     private Pelicula? _original;
     private DatosFormulario _inicial = DatosFormulario.Vacio;
     private bool _cargado;
@@ -46,7 +40,7 @@ public partial class FormularioViewModel(
     [ObservableProperty] private Pelicula _vistaPrevia = new();
 
     // Lista fija; en edición se agrega el género guardado si no es uno de los fijos (p. ej. creado desde la web)
-    public IReadOnlyList<string> Generos { get; private set; } = GenerosFijos;
+    public IReadOnlyList<string> Generos { get; private set; } = Core.Lista.Generos.Fijos;
     public string TituloPagina => EsEdicion ? "Editar película" : "Nueva película";
     public string TextoGuardar => Guardando ? "Guardando..." : "Guardar";
     public bool HayPoster => !string.IsNullOrEmpty(PosterBase64);
@@ -79,9 +73,9 @@ public partial class FormularioViewModel(
     private void Cargar(DatosFormulario d)
     {
         var genero = d.Genero.Trim();
-        if (genero.Length > 0 && !GenerosFijos.Contains(genero))
+        if (genero.Length > 0 && !Core.Lista.Generos.Fijos.Contains(genero))
         {
-            Generos = [.. GenerosFijos, genero];
+            Generos = [.. Core.Lista.Generos.Fijos, genero];
             OnPropertyChanged(nameof(Generos));
         }
         Titulo = d.Titulo;
