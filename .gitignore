@@ -4,3 +4,6 @@ obj/
 *.user
 .vs/
 CineList.apk
+
+*.docx
+docs/superpowers/
