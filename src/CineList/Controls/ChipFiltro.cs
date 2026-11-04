@@ -1,11 +1,9 @@
 using CineList.Core.Lista;
-using CineList.Helpers;
 
 namespace CineList.Controls;
 
-// Chip de filtro (Todas / Vistas / Pendientes). Está activo cuando Seleccionado == Valor;
-// al cambiar, el fondo pasa de un color a otro en 200 ms.
-public class ChipFiltro : Button
+// Chip de filtro (Todas / Vistas / Pendientes). Está activo cuando Seleccionado == Valor.
+public class ChipFiltro : ChipBase
 {
     public static readonly BindableProperty ValorProperty = BindableProperty.Create(
         nameof(Valor), typeof(FiltroEstado), typeof(ChipFiltro), FiltroEstado.Todas,
@@ -27,37 +25,10 @@ public class ChipFiltro : Button
         set => SetValue(SeleccionadoProperty, value);
     }
 
-    private bool? _activo;
-
     public ChipFiltro()
     {
         Actualizar(animar: false);
     }
 
-    private void Actualizar(bool animar)
-    {
-        var activo = Valor == Seleccionado;
-        if (_activo == activo) return;
-        _activo = activo;
-
-        var desde = BackgroundColor;
-        Style = (Style)Application.Current!.Resources[activo ? "ChipActivo" : "Chip"];
-        if (!animar || desde is null || Animaciones.ReducirMovimiento) return;
-
-        // Animación de color: se pinta localmente y al terminar se devuelve el control al estilo
-        // (así el AppThemeBinding del estilo sigue funcionando al cambiar de tema)
-        var hasta = BackgroundColor;
-        this.AbortAnimation("ColorChip");
-        new Animation(t => BackgroundColor = Interpolar(desde, hasta, t), 0, 1, Easing.CubicOut)
-            .Commit(this, "ColorChip", 16, 200, finished: (_, cancelada) =>
-            {
-                if (!cancelada) ClearValue(BackgroundColorProperty);
-            });
-    }
-
-    private static Color Interpolar(Color a, Color b, double t) => new(
-        (float)(a.Red + (b.Red - a.Red) * t),
-        (float)(a.Green + (b.Green - a.Green) * t),
-        (float)(a.Blue + (b.Blue - a.Blue) * t),
-        (float)(a.Alpha + (b.Alpha - a.Alpha) * t));
+    private void Actualizar(bool animar) => Marcar(Valor == Seleccionado, animar);
 }

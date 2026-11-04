@@ -40,6 +40,7 @@ public static class MauiProgram
 		builder.Services.AddSingleton<FiltrosGuardados>();
 		builder.Services.AddSingleton<PeliculasViewModel>();
 		builder.Services.AddTransient<PeliculasPage>();
+		builder.Services.AddTransient<PanelFiltrosViewModel>(); // un borrador nuevo en cada apertura del panel
 		builder.Services.AddTransient<DetalleViewModel>();
 		builder.Services.AddTransient<DetallePage>();
 		builder.Services.AddSingleton<PosterService>();

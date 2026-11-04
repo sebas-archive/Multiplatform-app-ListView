@@ -8,7 +8,6 @@
     xmlns:celdas="clr-namespace:CineList.Views.Celdas"
     xmlns:controles="clr-namespace:CineList.Controls"
     xmlns:helpers="clr-namespace:CineList.Helpers"
-    xmlns:views="clr-namespace:CineList.Views"
     x:DataType="vm:PeliculasViewModel"
     Shell.NavBarIsVisible="False"
     Title="Películas">
@@ -136,7 +135,9 @@
             Margin="20,0,20,8"
             TextColor="{AppThemeBinding Light={StaticResource TextoSecundarioClaro}, Dark={StaticResource TextoSecundarioOscuro}}" />
 
-        <!-- ListView de películas agrupadas por género; cada fila es una PeliculaViewCell -->
+        <!-- ListView de películas agrupadas por género; cada fila es una PeliculaViewCell.
+             RetainElement: con RecycleElement, al rehacer los grupos (cambio de orden o filtros desde el panel)
+             Android dejaba una fila con el contenedor vacío y la última película desaparecía -->
         <ListView
             x:Name="ListaPeliculas"
             Grid.Row="4"
@@ -146,7 +147,7 @@
             IsGroupingEnabled="True"
             GroupDisplayBinding="{Binding Genero, x:DataType=lista:GrupoPeliculas}"
             HasUnevenRows="True"
-            CachingStrategy="RecycleElement"
+            CachingStrategy="RetainElement"
             SeparatorVisibility="None"
             SelectionMode="None"
             BackgroundColor="Transparent"
@@ -156,30 +157,29 @@
             RefreshControlColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}"
             ItemTapped="OnPeliculaTapped">
             <ListView.GroupHeaderTemplate>
-                <views:EncabezadoGrupoSelector>
-                    <views:EncabezadoGrupoSelector.Con>
-                        <DataTemplate x:DataType="lista:GrupoPeliculas">
-                            <ViewCell Height="44">
-                                <Label
-                                    Text="{Binding Genero}"
-                                    TextTransform="Uppercase"
-                                    FontFamily="InterBold"
-                                    FontSize="11"
-                                    CharacterSpacing="1.6"
-                                    Padding="20,0,20,8"
-                                    VerticalOptions="End"
-                                    TextColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}" />
-                            </ViewCell>
-                        </DataTemplate>
-                    </views:EncabezadoGrupoSelector.Con>
-                    <views:EncabezadoGrupoSelector.Sin>
-                        <DataTemplate>
-                            <ViewCell Height="0">
-                                <BoxView HeightRequest="0" Color="Transparent" />
-                            </ViewCell>
-                        </DataTemplate>
-                    </views:EncabezadoGrupoSelector.Sin>
-                </views:EncabezadoGrupoSelector>
+                <!-- Una sola plantilla: Android recicla las vistas de encabezado entre plantillas, así que
+                     con orden distinto de Género (un solo grupo de género "") el mismo encabezado se colapsa a 1 px
+                     (una fila de alto 0 descuadra el reciclaje de filas de Android y otras filas desaparecen) -->
+                <DataTemplate x:DataType="lista:GrupoPeliculas">
+                    <ViewCell>
+                        <Label
+                            Text="{Binding Genero}"
+                            HeightRequest="44"
+                            TextTransform="Uppercase"
+                            FontFamily="InterBold"
+                            FontSize="11"
+                            CharacterSpacing="1.6"
+                            Padding="20,0,20,8"
+                            VerticalTextAlignment="End"
+                            TextColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}">
+                            <Label.Triggers>
+                                <DataTrigger TargetType="Label" Binding="{Binding Genero}" Value="">
+                                    <Setter Property="HeightRequest" Value="1" />
+                                </DataTrigger>
+                            </Label.Triggers>
+                        </Label>
+                    </ViewCell>
+                </DataTemplate>
             </ListView.GroupHeaderTemplate>
             <ListView.Footer>
                 <Label
@@ -275,5 +275,8 @@
                 <Shadow Brush="Black" Opacity="0.3" Radius="12" Offset="0,4" />
             </Button.Shadow>
         </Button>
+
+        <!-- Panel inferior "Filtros y orden" (velo + hoja), encima de todo -->
+        <controles:PanelFiltros x:Name="PanelFiltros" Grid.RowSpan="5" />
     </Grid>
 </ContentPage>

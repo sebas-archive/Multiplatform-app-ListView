@@ -1,3 +1,7 @@
+#if ANDROID
+using Microsoft.Maui.Platform;
+#endif
+
 namespace CineList.Services;
 
 // Pinta la barra de estado y la de navegación de Android con el fondo del tema actual
@@ -14,6 +18,24 @@ public static class BarraEstado
             foreach (var f in fa.SupportFragmentManager.Fragments)
                 if (f is AndroidX.Fragment.App.DialogFragment { Dialog.Window: { } dialogo })
                     Pintar(dialogo, tema);
+#endif
+    }
+
+    // Con el panel de filtros abierto, la barra de estado sigue al velo y la de navegación a la hoja,
+    // para que no queden franjas sin oscurecer; con null se vuelve a los colores del tema
+    public static void FondoSistema(Color? arriba, Color? abajo)
+    {
+#if ANDROID
+        if (Platform.CurrentActivity?.Window is not { } ventana) return;
+        if (arriba is null || abajo is null)
+        {
+            Pintar(ventana, Application.Current?.RequestedTheme ?? AppTheme.Dark);
+            return;
+        }
+#pragma warning disable CA1422 // ver Pintar
+        ventana.SetStatusBarColor(arriba.ToPlatform());
+        ventana.SetNavigationBarColor(abajo.ToPlatform());
+#pragma warning restore CA1422
 #endif
     }
 

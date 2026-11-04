@@ -12,13 +12,15 @@ public partial class PeliculasPage : ContentPage
 {
     private readonly PeliculasViewModel _vm;
     private readonly TemaService _tema;
+    private readonly IServiceProvider _servicios;
     private bool _navegando; // evita abrir dos páginas con un doble toque
 
-    public PeliculasPage(PeliculasViewModel vm, TemaService tema)
+    public PeliculasPage(PeliculasViewModel vm, TemaService tema, IServiceProvider servicios)
     {
         InitializeComponent();
         BindingContext = _vm = vm;
         _tema = tema;
+        _servicios = servicios;
         BotonTema.Text = IconoTema();
     }
 
@@ -62,9 +64,30 @@ public partial class PeliculasPage : ContentPage
 
     private void OnFiltros(object? sender, TappedEventArgs e) => AbrirPanelFiltros();
 
-    // Task 3 abre aquí el panel de filtros y orden
-    private void AbrirPanelFiltros()
+    // Abre el panel "Filtros y orden" con un borrador nuevo (copia de los criterios vigentes)
+    private async void AbrirPanelFiltros()
     {
+        // Sin la lista descargada el conteo del panel no tendría sentido
+        if (PanelFiltros.Abierto || _navegando || !_vm.Cargada || _vm.Cargando) return;
+        try
+        {
+            await PanelFiltros.AbrirAsync(_servicios.GetRequiredService<PanelFiltrosViewModel>());
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[PeliculasPage] {ex.Message}");
+        }
+    }
+
+    // Con el panel abierto, el botón atrás de Android lo cierra sin aplicar
+    protected override bool OnBackButtonPressed()
+    {
+        if (PanelFiltros.Abierto)
+        {
+            PanelFiltros.Cerrar();
+            return true;
+        }
+        return base.OnBackButtonPressed();
     }
 
     private bool _fabAnimado;

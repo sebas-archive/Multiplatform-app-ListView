@@ -15,6 +15,10 @@ public static class Animaciones
 #if ANDROID
             try
             {
+                // Android 8+: el estado real de los animadores del proceso (el mismo que usa MAUI para
+                // animar); leer el ajuste puede no coincidir si se borró sin reiniciar el sistema
+                if (OperatingSystem.IsAndroidVersionAtLeast(26))
+                    return !Android.Animation.ValueAnimator.AreAnimatorsEnabled();
                 var resolver = Android.App.Application.Context.ContentResolver;
                 return Android.Provider.Settings.Global.GetFloat(resolver, Android.Provider.Settings.Global.AnimatorDurationScale, 1f) == 0f;
             }
@@ -62,11 +66,11 @@ public static class Animaciones
         await v.ScaleTo(1, 100, Easing.CubicOut);
     }
 
-    // Estrella: 1 -> 1.3 -> 1
-    public static async Task Pop(VisualElement v)
+    // Estrella: 1 -> 1.3 -> 1 (los chips del panel de filtros usan 1.15)
+    public static async Task Pop(VisualElement v, double escala = 1.3)
     {
         if (ReducirMovimiento) return;
-        await v.ScaleTo(1.3, 120, Easing.CubicOut);
+        await v.ScaleTo(escala, 120, Easing.CubicOut);
         await v.ScaleTo(1, 120, Easing.CubicOut);
     }
 
