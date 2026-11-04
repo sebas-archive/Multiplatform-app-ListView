@@ -37,6 +37,7 @@ public static class MauiProgram
 		{ Timeout = TimeSpan.FromSeconds(20) });
 		builder.Services.AddSingleton<IPeliculasRepository>(sp => new PeliculasRepository(sp.GetRequiredService<HttpClient>()));
 		builder.Services.AddSingleton<TemaService>();
+		builder.Services.AddSingleton<FiltrosGuardados>();
 		builder.Services.AddSingleton<PeliculasViewModel>();
 		builder.Services.AddTransient<PeliculasPage>();
 		builder.Services.AddTransient<DetalleViewModel>();

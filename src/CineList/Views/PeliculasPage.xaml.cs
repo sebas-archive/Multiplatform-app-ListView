@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using CineList.Core.Models;
 using CineList.Helpers;
@@ -19,6 +20,48 @@ public partial class PeliculasPage : ContentPage
         BindingContext = _vm = vm;
         _tema = tema;
         BotonTema.Text = IconoTema();
+        _vm.PropertyChanged += OnVmPropertyChanged;
+    }
+
+    // Insignia del botón Filtros: aparece con escala al pasar de 0 a 1 o más criterios;
+    // la línea "Activos" entra deslizando 12 px con fade
+    private async void OnVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(PeliculasViewModel.HayFiltrosActivos)) return;
+        try
+        {
+            if (_vm.HayFiltrosActivos)
+            {
+                await Task.WhenAll(AparecerLineaActivos(), Animaciones.AparecerEscala(InsigniaFiltros));
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[PeliculasPage] {ex.Message}");
+        }
+        finally
+        {
+            InsigniaFiltros.Scale = InsigniaFiltros.Opacity = 1;
+            LineaActivos.Opacity = 1;
+            LineaActivos.TranslationY = 0;
+        }
+    }
+
+    private async Task AparecerLineaActivos()
+    {
+        if (Animaciones.ReducirMovimiento) return;
+        LineaActivos.Opacity = 0;
+        LineaActivos.TranslationY = -12;
+        await Task.WhenAll(
+            LineaActivos.FadeTo(1, 250, Easing.CubicOut),
+            LineaActivos.TranslateTo(0, 0, 250, Easing.CubicOut));
+    }
+
+    private void OnFiltros(object? sender, TappedEventArgs e) => AbrirPanelFiltros();
+
+    // Task 3 abre aquí el panel de filtros y orden
+    private void AbrirPanelFiltros()
+    {
     }
 
     private bool _fabAnimado;

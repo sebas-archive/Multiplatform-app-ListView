@@ -12,7 +12,7 @@ namespace CineList.ViewModels;
 
 // Estado de la lista de películas. Se registra como singleton: detalle y formulario
 // usan Buscar/Upsert/Quitar para mantener la lista al día sin volver a descargarla.
-public partial class PeliculasViewModel(IPeliculasRepository repositorio) : ObservableObject
+public partial class PeliculasViewModel(IPeliculasRepository repositorio, FiltrosGuardados guardados) : ObservableObject
 {
     private const int MaxFilasAnimadas = 10;
 
@@ -26,8 +26,12 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
     // Origen del ListView (agrupado por género)
     public ObservableCollection<GrupoPeliculas> Grupos { get; } = [];
 
+    // Criterios vigentes (filtros y orden guardados + texto y estado). Texto y Estado se sincronizan
+    // desde TextoBusqueda y Estado, que son los que enlaza la página.
+    private CriteriosFiltro _criterios = guardados.Cargar();
+
     [ObservableProperty] private string _textoBusqueda = "";
-    [ObservableProperty] private FiltroEstado _estado = FiltroEstado.Todas;
+    [ObservableProperty] private FiltroEstado _estado = guardados.Cargar().Estado;
     [ObservableProperty] private bool _cargando;
     [ObservableProperty] private bool _refrescando;
     [ObservableProperty] private string? _error;
@@ -38,6 +42,16 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
     [ObservableProperty] private bool _animarEntrada;
     // Mensaje breve no bloqueante (p. ej. falló el refresco pero la lista sigue visible)
     [ObservableProperty] private string? _aviso;
+
+    public CriteriosFiltro Criterios => _criterios;
+    public bool Agrupado => _criterios.Orden == OrdenPeliculas.Genero;
+    public int FiltrosActivos => _criterios.CuantosActivos;
+    public string TextoActivos => FiltroPeliculas.TextoActivos(_criterios);
+    public bool HayFiltrosActivos => FiltrosActivos > 0;
+    public bool SinResultadosConFiltros => SinResultados && HayFiltrosActivos;
+    public bool SinResultadosSimple => SinResultados && !HayFiltrosActivos;
+    // Solo lectura, para el panel de filtros
+    public IReadOnlyList<Pelicula> Todas => _todas;
 
     public bool HayError => Error is not null;
     public bool MostrarLista => !HayError;
@@ -54,8 +68,22 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
     // Se dispara cuando una película sale de la lista (las celdas recicladas se restablecen)
     public event Action<Pelicula>? PeliculaQuitada;
 
-    partial void OnTextoBusquedaChanged(string value) => Aplicar(animar: false);
-    partial void OnEstadoChanged(FiltroEstado value) => Aplicar(animar: true);
+    partial void OnTextoBusquedaChanged(string value)
+    {
+        _criterios = _criterios with { Texto = value };
+        Aplicar(animar: false);
+    }
+
+    private bool _sincronizando;
+
+    partial void OnEstadoChanged(FiltroEstado value)
+    {
+        if (_sincronizando) return;
+        _criterios = _criterios with { Estado = value };
+        guardados.Guardar(_criterios);
+        Aplicar(animar: true);
+    }
+
     partial void OnErrorChanged(string? value)
     {
         OnPropertyChanged(nameof(HayError));
@@ -65,7 +93,39 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
     partial void OnAvisoChanged(string? value) => OnPropertyChanged(nameof(HayAviso));
     partial void OnCargandoChanged(bool value) => OnPropertyChanged(nameof(MostrarResumen));
     partial void OnVaciaChanged(bool value) => OnPropertyChanged(nameof(MostrarResumen));
-    partial void OnSinResultadosChanged(bool value) => OnPropertyChanged(nameof(MostrarResumen));
+    partial void OnSinResultadosChanged(bool value)
+    {
+        OnPropertyChanged(nameof(MostrarResumen));
+        OnPropertyChanged(nameof(SinResultadosConFiltros));
+        OnPropertyChanged(nameof(SinResultadosSimple));
+    }
+
+    // Aplica criterios nuevos desde el panel: guarda, sincroniza estado y re-filtra con entrada escalonada
+    public void AplicarCriterios(CriteriosFiltro nuevos)
+    {
+        nuevos = nuevos with { Texto = TextoBusqueda };
+        guardados.Guardar(nuevos);
+        _criterios = nuevos;
+        _sincronizando = true; // evita que OnEstadoChanged re-aplique y reemplace los criterios
+        Estado = nuevos.Estado;
+        _sincronizando = false;
+        Aplicar(animar: true);
+    }
+
+    [RelayCommand]
+    private void LimpiarFiltros() =>
+        AplicarCriterios(CriteriosFiltro.Vacio with { Texto = TextoBusqueda });
+
+    private void NotificarCriterios()
+    {
+        OnPropertyChanged(nameof(Criterios));
+        OnPropertyChanged(nameof(Agrupado));
+        OnPropertyChanged(nameof(FiltrosActivos));
+        OnPropertyChanged(nameof(TextoActivos));
+        OnPropertyChanged(nameof(HayFiltrosActivos));
+        OnPropertyChanged(nameof(SinResultadosConFiltros));
+        OnPropertyChanged(nameof(SinResultadosSimple));
+    }
 
     [RelayCommand]
     private Task CargarAsync() => DescargarAsync(mostrarEsqueleto: true);
@@ -117,7 +177,7 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
         // visibles se repintan con PeliculaActualizada; las que están fuera de pantalla se repintan
         // al reciclarse (rebind); ninguna otra pantalla viva conserva esta instancia.
         pelicula.Vista = copia.Vista;
-        if (FiltroPeliculas.Filtrar([pelicula], TextoBusqueda, Estado).Count == 0)
+        if (FiltroPeliculas.Contar([pelicula], _criterios) == 0)
         {
             QuitarDeGrupos(pelicula); // ya no cumple el filtro: sale de la lista
         }
@@ -218,15 +278,18 @@ public partial class PeliculasViewModel(IPeliculasRepository repositorio) : Obse
         }
     }
 
-    // Filtra y agrupa en memoria (sin red)
+    // Filtra, ordena y agrupa en memoria (sin red). Con orden distinto de Género el resultado es un
+    // único grupo de género "" (lista plana); un grupo vacío no se agrega para que 0 resultados
+    // sea igual en ambos modos.
     private void Aplicar(bool animar)
     {
-        var filtradas = FiltroPeliculas.Filtrar(_todas, TextoBusqueda, Estado);
+        var resultado = FiltroPeliculas.Aplicar(_todas, _criterios);
         if (animar) IniciarEntrada();
 
         Grupos.Clear();
-        foreach (var grupo in FiltroPeliculas.Agrupar(filtradas))
-            Grupos.Add(grupo);
+        foreach (var grupo in resultado.Grupos)
+            if (grupo.Count > 0) Grupos.Add(grupo);
+        NotificarCriterios();
         ActualizarConteos();
     }
 

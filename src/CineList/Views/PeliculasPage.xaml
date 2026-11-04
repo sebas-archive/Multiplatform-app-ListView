@@ -8,11 +8,12 @@
     xmlns:celdas="clr-namespace:CineList.Views.Celdas"
     xmlns:controles="clr-namespace:CineList.Controls"
     xmlns:helpers="clr-namespace:CineList.Helpers"
+    xmlns:views="clr-namespace:CineList.Views"
     x:DataType="vm:PeliculasViewModel"
     Shell.NavBarIsVisible="False"
     Title="Películas">
 
-    <Grid x:Name="Contenido" RowDefinitions="Auto,Auto,Auto,*">
+    <Grid x:Name="Contenido" RowDefinitions="Auto,Auto,Auto,Auto,*">
 
         <!-- Encabezado: título y botón de modo claro/oscuro -->
         <Grid Padding="20,16,20,8" ColumnDefinitions="*,Auto">
@@ -34,27 +35,71 @@
                 Clicked="OnAlternarTema" />
         </Grid>
 
-        <!-- Búsqueda por título o director -->
-        <Border
-            Grid.Row="1"
-            Margin="16,4,16,8"
-            Padding="4,0,8,0"
-            HeightRequest="46"
-            StrokeThickness="1"
-            StrokeShape="RoundRectangle 23"
-            BackgroundColor="{AppThemeBinding Light={StaticResource CampoClaro}, Dark={StaticResource CampoOscuro}}"
-            Stroke="{AppThemeBinding Light={StaticResource BordeCampoClaro}, Dark={StaticResource BordeCampoOscuro}}">
-            <SearchBar
-                Text="{Binding TextoBusqueda}"
-                Placeholder="Buscar título o director"
-                FontFamily="Inter"
-                FontSize="14"
-                BackgroundColor="Transparent"
-                VerticalOptions="Center"
-                TextColor="{AppThemeBinding Light={StaticResource TextoClaro}, Dark={StaticResource TextoOscuro}}"
-                PlaceholderColor="{AppThemeBinding Light={StaticResource TextoSecundarioClaro}, Dark={StaticResource TextoSecundarioOscuro}}"
-                CancelButtonColor="{AppThemeBinding Light={StaticResource TextoSecundarioClaro}, Dark={StaticResource TextoSecundarioOscuro}}" />
-        </Border>
+        <!-- Búsqueda por título o director + botón Filtros con insignia -->
+        <Grid Grid.Row="1" Margin="16,4,16,8" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <Border
+                Margin="0"
+                Padding="4,0,8,0"
+                HeightRequest="46"
+                StrokeThickness="1"
+                StrokeShape="RoundRectangle 23"
+                BackgroundColor="{AppThemeBinding Light={StaticResource CampoClaro}, Dark={StaticResource CampoOscuro}}"
+                Stroke="{AppThemeBinding Light={StaticResource BordeCampoClaro}, Dark={StaticResource BordeCampoOscuro}}">
+                <SearchBar
+                    Text="{Binding TextoBusqueda}"
+                    Placeholder="Buscar título o director"
+                    FontFamily="Inter"
+                    FontSize="14"
+                    BackgroundColor="Transparent"
+                    VerticalOptions="Center"
+                    TextColor="{AppThemeBinding Light={StaticResource TextoClaro}, Dark={StaticResource TextoOscuro}}"
+                    PlaceholderColor="{AppThemeBinding Light={StaticResource TextoSecundarioClaro}, Dark={StaticResource TextoSecundarioOscuro}}"
+                    CancelButtonColor="{AppThemeBinding Light={StaticResource TextoSecundarioClaro}, Dark={StaticResource TextoSecundarioOscuro}}" />
+            </Border>
+
+            <Grid Grid.Column="1" VerticalOptions="Center">
+                <Border
+                    x:Name="BotonFiltros"
+                    Padding="14,0"
+                    HeightRequest="46"
+                    StrokeThickness="1"
+                    StrokeShape="RoundRectangle 23"
+                    BackgroundColor="{AppThemeBinding Light={StaticResource CampoClaro}, Dark={StaticResource CampoOscuro}}"
+                    Stroke="{AppThemeBinding Light={StaticResource BordeCampoClaro}, Dark={StaticResource BordeCampoOscuro}}"
+                    SemanticProperties.Description="Filtros y orden">
+                    <HorizontalStackLayout Spacing="6" VerticalOptions="Center">
+                        <Label Text="{x:Static helpers:Iconos.Filtros}" FontFamily="Iconos" FontSize="20" VerticalOptions="Center"
+                               TextColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}" />
+                        <Label Text="Filtros" FontFamily="InterSemi" FontSize="14" VerticalOptions="Center"
+                               TextColor="{AppThemeBinding Light={StaticResource TextoClaro}, Dark={StaticResource TextoOscuro}}" />
+                    </HorizontalStackLayout>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnFiltros" />
+                    </Border.GestureRecognizers>
+                </Border>
+                <Border
+                    x:Name="InsigniaFiltros"
+                    IsVisible="{Binding HayFiltrosActivos}"
+                    InputTransparent="True"
+                    HorizontalOptions="End"
+                    VerticalOptions="Start"
+                    Margin="0,-6,-6,0"
+                    MinimumWidthRequest="20"
+                    HeightRequest="20"
+                    Padding="5,0"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 10"
+                    BackgroundColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}">
+                    <Label
+                        Text="{Binding FiltrosActivos}"
+                        FontFamily="InterBold"
+                        FontSize="11"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center"
+                        TextColor="{AppThemeBinding Light={StaticResource AcentoTextoClaro}, Dark={StaticResource AcentoTextoOscuro}}" />
+                </Border>
+            </Grid>
+        </Grid>
 
         <!-- Chips de filtro -->
         <HorizontalStackLayout Grid.Row="2" Padding="16,0,16,8" Spacing="8">
@@ -78,10 +123,23 @@
                 CommandParameter="{x:Static lista:FiltroEstado.Pendientes}" />
         </HorizontalStackLayout>
 
+        <!-- Resumen de criterios activos -->
+        <Label
+            x:Name="LineaActivos"
+            Grid.Row="3"
+            Text="{Binding TextoActivos, StringFormat='Activos: {0}'}"
+            IsVisible="{Binding HayFiltrosActivos}"
+            FontFamily="Inter"
+            FontSize="12"
+            LineBreakMode="TailTruncation"
+            MaxLines="2"
+            Margin="20,0,20,8"
+            TextColor="{AppThemeBinding Light={StaticResource TextoSecundarioClaro}, Dark={StaticResource TextoSecundarioOscuro}}" />
+
         <!-- ListView de películas agrupadas por género; cada fila es una PeliculaViewCell -->
         <ListView
             x:Name="ListaPeliculas"
-            Grid.Row="3"
+            Grid.Row="4"
             ItemsSource="{Binding Grupos}"
             IsVisible="{Binding MostrarLista}"
             ItemTemplate="{DataTemplate celdas:PeliculaViewCell}"
@@ -98,19 +156,30 @@
             RefreshControlColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}"
             ItemTapped="OnPeliculaTapped">
             <ListView.GroupHeaderTemplate>
-                <DataTemplate x:DataType="lista:GrupoPeliculas">
-                    <ViewCell Height="44">
-                        <Label
-                            Text="{Binding Genero}"
-                            TextTransform="Uppercase"
-                            FontFamily="InterBold"
-                            FontSize="11"
-                            CharacterSpacing="1.6"
-                            Padding="20,0,20,8"
-                            VerticalOptions="End"
-                            TextColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}" />
-                    </ViewCell>
-                </DataTemplate>
+                <views:EncabezadoGrupoSelector>
+                    <views:EncabezadoGrupoSelector.Con>
+                        <DataTemplate x:DataType="lista:GrupoPeliculas">
+                            <ViewCell Height="44">
+                                <Label
+                                    Text="{Binding Genero}"
+                                    TextTransform="Uppercase"
+                                    FontFamily="InterBold"
+                                    FontSize="11"
+                                    CharacterSpacing="1.6"
+                                    Padding="20,0,20,8"
+                                    VerticalOptions="End"
+                                    TextColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}" />
+                            </ViewCell>
+                        </DataTemplate>
+                    </views:EncabezadoGrupoSelector.Con>
+                    <views:EncabezadoGrupoSelector.Sin>
+                        <DataTemplate>
+                            <ViewCell Height="0">
+                                <BoxView HeightRequest="0" Color="Transparent" />
+                            </ViewCell>
+                        </DataTemplate>
+                    </views:EncabezadoGrupoSelector.Sin>
+                </views:EncabezadoGrupoSelector>
             </ListView.GroupHeaderTemplate>
             <ListView.Footer>
                 <Label
@@ -124,12 +193,12 @@
 
         <!-- Esqueleto mientras carga -->
         <controles:EsqueletoLista
-            Grid.Row="3"
+            Grid.Row="4"
             IsVisible="{Binding Cargando}"
             BackgroundColor="{AppThemeBinding Light={StaticResource FondoClaro}, Dark={StaticResource FondoOscuro}}" />
 
         <!-- Lista vacía -->
-        <controles:PanelEstado Grid.Row="3" IsVisible="{Binding Vacia}" Spacing="12" Padding="40,0" VerticalOptions="Center">
+        <controles:PanelEstado Grid.Row="4" IsVisible="{Binding Vacia}" Spacing="12" Padding="40,0" VerticalOptions="Center">
             <Label Text="{x:Static helpers:Iconos.Pelicula}" FontFamily="Iconos" FontSize="56" HorizontalOptions="Center"
                    TextColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}" />
             <Label Text="Tu lista está vacía" FontFamily="InterSemi" FontSize="18" HorizontalOptions="Center" />
@@ -139,16 +208,25 @@
                     HorizontalOptions="Center" Command="{Binding CargarEjemplosCommand}" />
         </controles:PanelEstado>
 
-        <!-- Sin resultados para la búsqueda o el filtro -->
-        <controles:PanelEstado Grid.Row="3" IsVisible="{Binding SinResultados}" Spacing="8" Padding="40,0" Margin="0,48,0,0" VerticalOptions="Start">
+        <!-- Sin resultados para la búsqueda -->
+        <controles:PanelEstado Grid.Row="4" IsVisible="{Binding SinResultadosSimple}" Spacing="8" Padding="40,0" Margin="0,48,0,0" VerticalOptions="Start">
             <Label Text="{x:Static helpers:Iconos.Buscar}" FontFamily="Iconos" FontSize="40" HorizontalOptions="Center"
                    TextColor="{AppThemeBinding Light={StaticResource TextoSecundarioClaro}, Dark={StaticResource TextoSecundarioOscuro}}" />
             <Label Text="No hay películas que coincidan" Style="{StaticResource TextoSecundario}" HorizontalTextAlignment="Center" />
         </controles:PanelEstado>
 
+        <!-- Sin resultados con filtros activos -->
+        <controles:PanelEstado Grid.Row="4" IsVisible="{Binding SinResultadosConFiltros}" Spacing="8" Padding="40,0" Margin="0,48,0,0" VerticalOptions="Start">
+            <Label Text="{x:Static helpers:Iconos.Filtros}" FontFamily="Iconos" FontSize="40" HorizontalOptions="Center"
+                   TextColor="{AppThemeBinding Light={StaticResource TextoSecundarioClaro}, Dark={StaticResource TextoSecundarioOscuro}}" />
+            <Label Text="Ninguna película coincide con los filtros" Style="{StaticResource TextoSecundario}" HorizontalTextAlignment="Center" />
+            <Button Text="Limpiar filtros" Style="{StaticResource BotonSecundario}" Margin="0,8,0,0"
+                    HorizontalOptions="Center" Command="{Binding LimpiarFiltrosCommand}" />
+        </controles:PanelEstado>
+
         <!-- Error de red o del servidor -->
         <controles:PanelEstado
-            Grid.Row="3"
+            Grid.Row="4"
             IsVisible="{Binding HayError}"
             Spacing="12"
             Padding="40,0"
@@ -163,7 +241,7 @@
         </controles:PanelEstado>
 
         <!-- Aviso breve (no bloquea la lista) -->
-        <controles:PanelEstado Grid.Row="3" IsVisible="{Binding HayAviso}" VerticalOptions="End" Margin="20,0,92,32">
+        <controles:PanelEstado Grid.Row="4" IsVisible="{Binding HayAviso}" VerticalOptions="End" Margin="20,0,92,32">
             <Border
                 Padding="16,10"
                 StrokeThickness="0"
@@ -178,7 +256,7 @@
         <!-- Botón flotante: nueva película -->
         <Button
             x:Name="BotonAgregar"
-            Grid.Row="3"
+            Grid.Row="4"
             Text="{x:Static helpers:Iconos.Agregar}"
             FontFamily="Iconos"
             FontSize="30"
