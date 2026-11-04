@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es" data-tema="oscuro">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CineList</title>
+    <base href="/" />
+    <script>
+        // Fija el tema ANTES de cargar Blazor para evitar el parpadeo.
+        // ?tema=claro|oscuro lo fuerza y lo guarda; si no, localStorage "tema"; si no, prefers-color-scheme.
+        (function () {
+            var tema = null;
+            try {
+                var q = new URLSearchParams(location.search).get('tema');
+                if (q === 'claro' || q === 'oscuro') { tema = q; localStorage.setItem('tema', q); }
+                else { tema = localStorage.getItem('tema'); }
+            } catch (e) { }
+            if (tema !== 'claro' && tema !== 'oscuro') {
+                tema = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'claro' : 'oscuro';
+            }
+            document.documentElement.setAttribute('data-tema', tema);
+        })();
+    </script>
+    <link rel="stylesheet" href="css/tokens.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link href="CineList.Web.styles.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div id="app">
+        <p class="cargando">Cargando…</p>
+    </div>
+
+    <div id="blazor-error-ui">
+        Ocurrió un error inesperado.
+        <a href="." class="reload">Recargar</a>
+        <span class="dismiss">×</span>
+    </div>
+    <script src="js/cinelist.js"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>

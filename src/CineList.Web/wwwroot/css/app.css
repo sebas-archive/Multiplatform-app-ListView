@@ -1,0 +1,94 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.4;
+    overflow-x: hidden;
+}
+
+h1, h2, h3, p { margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+a { color: var(--acento); }
+
+/* Íconos de la fuente Material Symbols */
+.icono, .icono-lleno {
+    font-family: "Iconos";
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    display: inline-block;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+}
+.icono-lleno { font-family: "IconosRellenos"; }
+
+/* Columna centrada */
+.columna {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+.cabecera {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 20px 0 12px;
+}
+
+.titulo-app {
+    font-family: var(--fuente-titulo);
+    font-weight: 700;
+    font-size: 32px;
+    color: var(--texto);
+}
+
+.boton-redondo {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid var(--borde-campo);
+    background: var(--campo);
+    color: var(--texto);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background-color 150ms ease, transform 150ms ease;
+}
+.boton-redondo:hover { transform: scale(1.06); }
+.boton-redondo:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.boton-redondo .icono { font-size: 24px; }
+
+.cargando { padding: 40px 16px; text-align: center; color: var(--texto-secundario); }
+
+#blazor-error-ui {
+    background: var(--superficie);
+    color: var(--texto);
+    border-top: 1px solid var(--peligro);
+    bottom: 0;
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+#blazor-error-ui .dismiss { cursor: pointer; position: absolute; right: 0.75rem; top: 0.5rem; }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+}

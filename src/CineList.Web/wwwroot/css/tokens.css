@@ -1,0 +1,47 @@
+/* Fuentes */
+@font-face { font-family: "Inter"; font-weight: 400; font-display: swap; src: url("../fonts/Inter-Regular.ttf") format("truetype"); }
+@font-face { font-family: "Inter"; font-weight: 600; font-display: swap; src: url("../fonts/Inter-SemiBold.ttf") format("truetype"); }
+@font-face { font-family: "Inter"; font-weight: 700; font-display: swap; src: url("../fonts/Inter-Bold.ttf") format("truetype"); }
+@font-face { font-family: "Fraunces"; font-weight: 700; font-display: swap; src: url("../fonts/Fraunces-Bold.ttf") format("truetype"); }
+@font-face { font-family: "Iconos"; font-display: block; src: url("../fonts/MaterialSymbolsRounded.ttf") format("truetype"); }
+@font-face { font-family: "IconosRellenos"; font-display: block; src: url("../fonts/MaterialSymbolsRoundedFill.ttf") format("truetype"); }
+
+/* Tokens: oscuro "Sala oscura" */
+:root, :root[data-tema="oscuro"] {
+    color-scheme: dark;
+    --fondo: #0F1115;
+    --superficie: #181B21;
+    --borde-superficie: #181B21;
+    --campo: #1C1F26;
+    --borde-campo: #1C1F26;
+    --texto: #F2F2F2;
+    --texto-secundario: #8B929C;
+    --acento: #F5C518;
+    --acento-texto: #0F1115;
+    --vista-texto: #4CD964;
+    --vista-fondo: rgba(76, 217, 100, 0.15);
+    --pendiente-texto: #FFB340;
+    --pendiente-fondo: rgba(255, 179, 64, 0.15);
+    --peligro: #FF6B5E;
+    --fuente-titulo: "Inter", system-ui, sans-serif;
+}
+
+/* Tokens: claro "Claro editorial" */
+:root[data-tema="claro"] {
+    color-scheme: light;
+    --fondo: #F7F5F0;
+    --superficie: #FFFFFF;
+    --borde-superficie: #ECE7DE;
+    --campo: #FFFFFF;
+    --borde-campo: #E6E1D8;
+    --texto: #1D1B18;
+    --texto-secundario: #7A7368;
+    --acento: #B4532A;
+    --acento-texto: #FFFFFF;
+    --vista-texto: #2F6B2A;
+    --vista-fondo: #E5EFE3;
+    --pendiente-texto: #A1531F;
+    --pendiente-fondo: #F6E7D8;
+    --peligro: #B3261E;
+    --fuente-titulo: "Fraunces", Georgia, serif;
+}
