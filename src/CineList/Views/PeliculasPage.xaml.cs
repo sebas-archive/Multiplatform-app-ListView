@@ -100,7 +100,7 @@ public partial class PeliculasPage : ContentPage
         PeliculaViewCell.CapaRafaga = null;
         _vm.AnimarSalidaLista = null;
         _vm.RestaurarLista = null;
-        ListaPeliculas.Opacity = 1;
+        RestaurarOpacidadLista();
         _vm.PropertyChanged -= OnVmPropertyChanged; // evita retener la página desde el VM singleton
     }
 
@@ -109,7 +109,7 @@ public partial class PeliculasPage : ContentPage
         base.OnAppearing();
         PeliculaViewCell.CapaRafaga = CapaRafaga;
         _vm.AnimarSalidaLista = AnimarSalidaListaAsync;
-        _vm.RestaurarLista = () => ListaPeliculas.Opacity = 1;
+        _vm.RestaurarLista = RestaurarOpacidadLista; RestaurarOpacidadLista();
         // Estado inicial sin animación (p. ej. filtros guardados al abrir la app)
         _hayFiltros = _vm.HayFiltrosActivos;
         _vm.PropertyChanged -= OnVmPropertyChanged;
@@ -239,4 +239,12 @@ public partial class PeliculasPage : ContentPage
 
     // En modo oscuro se ofrece el sol (pasar a claro); en modo claro, la luna
     private string IconoTema() => _tema.TemaActual == AppTheme.Dark ? Iconos.ModoClaro : Iconos.ModoOscuro;
+
+    // Corta un desvanecimiento en curso y deja la lista visible (evita quedar en opacidad 0 si
+    // otra reconstrucción o la salida de la página interrumpen la animación)
+    private void RestaurarOpacidadLista()
+    {
+        ListaPeliculas.AbortAnimation("FadeTo");
+        ListaPeliculas.Opacity = 1;
+    }
 }

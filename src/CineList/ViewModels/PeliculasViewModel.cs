@@ -341,6 +341,7 @@ public partial class PeliculasViewModel : ObservableObject
     private void Aplicar(bool animar)
     {
         _versionSalida++;
+        RestaurarLista?.Invoke(); // cualquier reconstrucción deja la lista visible
         var resultado = FiltroPeliculas.Aplicar(_todas, _criterios);
         if (animar) IniciarEntrada();
 
