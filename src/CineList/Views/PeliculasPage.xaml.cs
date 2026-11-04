@@ -90,8 +90,6 @@ public partial class PeliculasPage : ContentPage
         return base.OnBackButtonPressed();
     }
 
-    private bool _fabAnimado;
-
     private bool _hayFiltros;
 
     protected override void OnDisappearing()
@@ -104,7 +102,7 @@ public partial class PeliculasPage : ContentPage
         _vm.PropertyChanged -= OnVmPropertyChanged; // evita retener la página desde el VM singleton
     }
 
-    protected override async void OnAppearing()
+    protected override void OnAppearing()
     {
         base.OnAppearing();
         PeliculaViewCell.CapaRafaga = CapaRafaga;
@@ -119,18 +117,10 @@ public partial class PeliculasPage : ContentPage
         try
         {
             if (!_vm.Cargada) _ = _vm.CargarCommand.ExecuteAsync(null);
-            // El "+" quedó girado 90° al abrir el formulario: con la sombra de Android, la rotación
-            // desplaza el botón; se vuelve a 0 (el glifo se ve igual)
-            BotonAgregar.Rotation = 0;
-            // La animación de entrada solo corre la primera vez: al volver de segundo plano Android
-            // pausa los animadores y el botón podía quedar a medio escalar
-            if (_fabAnimado) BotonAgregar.Scale = BotonAgregar.Opacity = 1;
-            else
-            {
-                _fabAnimado = true;
-                await Animaciones.AparecerEscala(BotonAgregar);
-                BotonAgregar.Scale = BotonAgregar.Opacity = 1;
-            }
+            // El botón flotante aparece con la página, sin “pop” de entrada; el giro de 90° al abrirlo
+            // se veía forzado y, con la sombra de Android, desplazaba el botón.
+            BotonAgregar.Scale = 1;
+            BotonAgregar.Opacity = 1;
         }
         catch (Exception ex)
         {
@@ -186,7 +176,8 @@ public partial class PeliculasPage : ContentPage
         _navegando = true;
         try
         {
-            await Animaciones.RotarFab(BotonAgregar);
+            // Solo un hundido breve; sin giro de 90° (se veía como un botón que se torcía).
+            await Animaciones.Pulsar(BotonAgregar, 0.94);
             await Shell.Current.GoToAsync("formulario");
         }
         catch (Exception ex)

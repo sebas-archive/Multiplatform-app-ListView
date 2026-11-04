@@ -212,14 +212,6 @@ public static class Animaciones
         await tcs.Task;
     }
 
-    // Boton +: gira 90 grados
-    public static async Task RotarFab(VisualElement v)
-    {
-        if (ReducirMovimiento) return;
-        await v.RotateTo(v.Rotation + 90, Media, Easing.CubicOut);
-        v.Rotation %= 360;
-    }
-
     // Aparece con escala (0 -> 1) al cargar la pagina
     public static async Task AparecerEscala(VisualElement v)
     {

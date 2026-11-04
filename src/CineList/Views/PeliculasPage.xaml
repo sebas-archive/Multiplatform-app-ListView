@@ -259,20 +259,22 @@
             Grid.Row="4"
             Text="{x:Static helpers:Iconos.Agregar}"
             FontFamily="Iconos"
-            FontSize="30"
-            WidthRequest="58"
-            HeightRequest="58"
+            FontSize="34"
+            FontAutoScalingEnabled="False"
+            WidthRequest="60"
+            HeightRequest="60"
             Padding="0"
-            CornerRadius="18"
-            Margin="0,0,20,24"
+            CornerRadius="30"
+            Margin="0,0,20,28"
             HorizontalOptions="End"
             VerticalOptions="End"
+            ZIndex="10"
             BackgroundColor="{AppThemeBinding Light={StaticResource AcentoClaro}, Dark={StaticResource AcentoOscuro}}"
             TextColor="{AppThemeBinding Light={StaticResource AcentoTextoClaro}, Dark={StaticResource AcentoTextoOscuro}}"
             SemanticProperties.Description="Agregar película"
             Clicked="OnAgregar">
             <Button.Shadow>
-                <Shadow Brush="Black" Opacity="0.3" Radius="12" Offset="0,4" />
+                <Shadow Brush="Black" Opacity="0.28" Radius="14" Offset="0,6" />
             </Button.Shadow>
         </Button>
 
