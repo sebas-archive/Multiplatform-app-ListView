@@ -1,146 +1,252 @@
 # CineList
 
-Aplicación de lista de películas hecha con .NET MAUI 9 (Android), con una versión web en Blazor WebAssembly. Proyecto de la Guía 8, "Trabajo con ListView". Las películas se guardan en Firebase Firestore y se muestran en un `ListView` agrupado por género con celdas personalizadas (`ViewCell`).
+Aplicación multiplataforma para administrar una lista personal de películas. La app de Android está hecha con **.NET MAUI 9** y la versión web con **Blazor WebAssembly**; ambas comparten la lógica de `CineList.Core` y guardan los datos en **Firebase Firestore**.
+
+Proyecto de la **Guía 8, «Trabajo con ListView»**, de Computación móvil (Universidad Manuela Beltrán). El requisito central es un `ListView` agrupado por género con celdas personalizadas (`ViewCell`) y un evento de selección que abre el detalle.
+
+**Estado:** app Android y web funcionando; **132 pruebas unitarias** pasando.
+
+## Contenido
+
+- [Qué es](#qué-es)
+- [Características](#características)
+- [Tecnologías](#tecnologías)
+- [Estructura del repositorio](#estructura-del-repositorio)
+- [Requisitos](#requisitos)
+- [Inicio rápido](#inicio-rápido)
+  - [Web](#web)
+  - [Android](#android)
+  - [Pruebas](#pruebas)
+- [Arquitectura](#arquitectura)
+- [Firebase](#firebase)
+- [Evidencias de la Guía 8](#evidencias-de-la-guía-8)
+- [Publicación](#publicación)
+- [Limitaciones y notas](#limitaciones-y-notas)
+- [Contexto académico](#contexto-académico)
+
+## Qué es
+
+CineList permite registrar películas con título, director, género, año, duración, sinopsis, estado (vista o pendiente), calificación y póster. La lista se agrupa por género y se puede buscar, filtrar y ordenar; cada fila abre una pantalla de detalle desde la que se puede editar, cambiar de estado o eliminar.
+
+La misma solución existe en dos clientes:
+
+- **Android:** app nativa con .NET MAUI, `ListView`, `PeliculaViewCell : ViewCell` y navegación por `Shell`.
+- **Web:** Blazor WebAssembly, con componentes Razor que reutilizan el modelo y las reglas de negocio.
+
+Ambos leen y escriben la misma colección de Firestore, así que un cambio hecho en la web se ve en la app y viceversa al recargar.
+
+## Características
+
+### Lista y navegación
+
+- `ListView` agrupado por género, con encabezados de grupo (solo con el orden Género; con los demás órdenes la lista es plana).
+- Celda personalizada con póster, título, director, año, duración, estrellas y etiqueta **VISTA/PENDIENTE**.
+- Evento `ItemTapped` que navega al detalle de la película.
+- Detalle con sinopsis, calificación, acciones de estado, edición y eliminación.
+- Alta y edición mediante formulario.
+- Acciones contextuales con pulsación larga y actualización por deslizamiento (*pull-to-refresh*).
+
+### Búsqueda, filtros y orden
+
+- Búsqueda por título o director, sin distinguir mayúsculas ni tildes.
+- Chips de estado: **Todas**, **Vistas** y **Pendientes**.
+- Panel **Filtros y orden** con:
+  - selección múltiple de géneros;
+  - década (Todas, Antes de 1980, 1980s, 1990s, 2000s, 2010s, 2020s);
+  - calificación mínima;
+  - orden por Género, Título, Año, Calificación o Recientes.
+- El botón **Ver N películas** se actualiza en vivo y **Limpiar** restablece todo.
+- Insignia con el número de filtros activos y línea **Activos:** con el resumen.
+- Los filtros y el orden se recuerdan entre aperturas; el texto de búsqueda no.
+
+### Datos y póster
+
+- Persistencia en Firebase Firestore mediante su API REST, sin SDK nativo.
+- Póster desde la cámara o la galería en Android, y desde un archivo en la web.
+- La imagen se reduce a 600 px de lado mayor, JPEG calidad 70 y máximo 900 000 caracteres en base64.
+- Límite de 25 MB por archivo en la versión web.
+
+### Interfaz
+
+- Temas claro y oscuro: el primer arranque sigue al sistema y el botón sol/luna lo alterna.
+- Animaciones breves: el póster vuela de la lista al detalle, el detalle usa el póster desenfocado con parallax (Android 12 o superior), las estrellas se llenan, la etiqueta gira al cambiar de estado y el panel de filtros sube con rebote.
+- Las animaciones decorativas se omiten si el sistema pide reducir movimiento.
+- Estados de carga, lista vacía, sin resultados y error de conexión con **Reintentar**.
+
+### Versión web
+
+- Mismos datos, reglas de búsqueda, filtros y orden que la app Android.
+- Cada fila tiene un menú **⋮** en lugar de la pulsación larga.
+- El póster se sube desde un archivo de imagen.
+- No hay actualización en tiempo real ni *pull-to-refresh*: la lista se refresca con **Recargar** o al recargar la página.
+- Filtros, orden y tema se guardan en `localStorage`.
 
 ## Tecnologías
 
-- .NET 9 y .NET MAUI (destino `net9.0-android`, Android 5.0 / API 21 o superior)
-- `ListView` con `PeliculaViewCell : ViewCell` en C# y `ItemTapped`
-- Blazor WebAssembly (.NET 9) para la versión web (`src/CineList.Web`)
-- Firebase Firestore mediante la API REST (sin SDK nativo)
-- xUnit para las pruebas de la lógica (`CineList.Core`)
-- Íconos vectoriales (Material Symbols), sin emojis
+| Capa | Tecnología |
+|---|---|
+| App Android | .NET MAUI 9, XAML, Shell, `ListView` y `ViewCell` |
+| Web | Blazor WebAssembly (.NET 9), componentes Razor e interop con JavaScript |
+| Lógica compartida | `CineList.Core` (.NET 9) |
+| Datos | Firebase Firestore mediante API REST |
+| MVVM | CommunityToolkit.Mvvm |
+| Pruebas | xUnit |
+| Iconografía | Material Symbols Rounded (fuentes locales) |
 
-## Estructura
+## Estructura del repositorio
 
-- `src/CineList`: aplicación MAUI (vistas, celdas, servicios de la interfaz)
-- `src/CineList.Web`: versión web (Blazor WebAssembly, mismos datos y lógica)
-- `src/CineList.Core`: modelo, búsqueda, validación, mapeo de Firestore y repositorio
-- `tests/CineList.Core.Tests`: pruebas unitarias
-
-## Paso a paso: cómo ver la app
-
-CineList es una app **Android** y también tiene versión web. Hay tres formas de verla.
-
-### Opción A: en el PC con el emulador de Android (la más fácil para el video)
-
-Requisitos (ya instalados en este equipo): .NET 9 SDK con `maui-android`, JDK 17, Android SDK y el emulador `Pixel_8`.
-
-1. Abre una terminal en la carpeta del proyecto:
-   ```bash
-   cd "/home/t1an/aplicacion listview"
-   ```
-2. Enciende el emulador (se abre una ventana con el celular virtual; espera a que muestre la pantalla de inicio):
-   ```bash
-   $HOME/Android/Sdk/emulator/emulator -avd Pixel_8 &
-   ```
-3. Instala y abre la app. Elige una de las dos formas:
-   - **Con el APK ya compilado** (rápido):
-     ```bash
-     $HOME/Android/Sdk/platform-tools/adb install -r CineList.apk
-     $HOME/Android/Sdk/platform-tools/adb shell monkey -p com.cinelist.app -c android.intent.category.LAUNCHER 1
-     ```
-   - **Compilando desde el código** (si cambiaste algo):
-     ```bash
-     dotnet build src/CineList -f net9.0-android -t:Run \
-       -p:JavaSdkDirectory=/usr/lib/jvm/java-17-openjdk \
-       -p:AndroidSdkDirectory=$HOME/Android/Sdk
-     ```
-4. La app aparece en el emulador. También queda instalada en el cajón de apps como **CineList** (ícono de claqueta dorada).
-5. Para grabar el video puedes usar el grabador de pantalla del sistema sobre la ventana del emulador, o el botón de grabar de los controles del emulador (menú `...` → *Record and Playback*).
-
-Si la app se ve con una versión vieja, desinstálala y vuelve al paso 3:
-```bash
-$HOME/Android/Sdk/platform-tools/adb uninstall com.cinelist.app
+```text
+CineList.sln                 Solución con los cuatro proyectos
+CineList.apk                 APK de ejemplo (no se versiona)
+src/
+  CineList/                  App .NET MAUI para Android
+    Views/                   Páginas y celdas (PeliculasPage, PeliculaViewCell)
+    ViewModels/              Estado y comandos de cada pantalla
+    Services/                Tema, póster, transiciones y barra de estado
+    Controls/                Controles reutilizables (chips, estrellas, póster)
+  CineList.Core/             Lógica compartida, sin dependencias de interfaz
+    Models/                  Pelicula
+    Lista/                   Búsqueda, filtros, orden y agrupación
+    Firestore/               Mapeo, repositorio y configuración
+    Formulario/              Validación y datos del formulario
+    Poster/                  Política de tamaño y compresión
+  CineList.Web/              Versión Blazor WebAssembly
+    Pages/                   Lista, detalle y formulario
+    Components/              Filas, filtros, pósters y diálogos
+    Services/                Estado de la lista, tema y almacenamiento local
+tests/
+  CineList.Core.Tests/       132 pruebas con xUnit
 ```
 
-### Opción B: en tu celular Android
+`CineList.sln` es el archivo de solución: agrupa los cuatro proyectos para abrirlos juntos en Visual Studio, Rider o VS Code y compilarlos o probarlos desde la raíz. También puedes consultar sus proyectos con `dotnet sln list`.
 
-1. Copia `CineList.apk` (está en la raíz del proyecto) al celular: por cable USB, Google Drive, Telegram o correo.
-2. En el celular, abre el archivo. Android pedirá permitir **"Instalar apps desconocidas"** para la app con la que lo abriste (Archivos, Drive...). Actívalo y vuelve.
-3. Toca **Instalar** y luego **Abrir**.
-4. El celular necesita internet: las películas se leen y guardan en Firebase.
+## Requisitos
 
-Alternativa por cable: activa *Opciones de desarrollador → Depuración USB*, conecta el celular y ejecuta `adb install -r CineList.apk` (mismo comando de la opción A).
+Para la **versión web** solo necesitas el SDK de .NET 9.
 
-Para mostrar el celular en la pantalla del PC (útil en la exposición) puedes usar [scrcpy](https://github.com/Genymobile/scrcpy): con el celular conectado por USB y la depuración activada, ejecuta `scrcpy`.
+Para **Android**:
 
-### Opción C: en el navegador (versión web)
+- .NET 9 SDK con la carga de trabajo `maui-android` (`dotnet workload install maui-android`).
+- JDK 17.
+- Android SDK (API 35 recomendado) y las build-tools; la app soporta Android 5.0 (API 21) o superior.
+- Un emulador o un dispositivo con depuración USB.
+- Conexión a internet: las películas se leen y se guardan en Firestore.
 
-Además del APK hay una versión web hecha con Blazor WebAssembly (`src/CineList.Web`). Funciona en cualquier navegador moderno y no necesita emulador.
-
-1. Abre una terminal en la carpeta del proyecto:
-   ```bash
-   cd "/home/t1an/aplicacion listview"
-   ```
-2. Inicia la versión web:
-   ```bash
-   dotnet run --project src/CineList.Web
-   ```
-3. Abre <http://localhost:5180> en el navegador. Para detenerla, pulsa `Ctrl+C` en la terminal.
-
-Qué comparte con el APK:
-
-- **Los mismos datos**: lee y guarda en la misma colección `movies` de Firestore (proyecto `cinelist-7a4de`). Lo que cambies en la web aparece en la app y viceversa.
-- **Las mismas reglas** de búsqueda, filtros y orden (vienen de `CineList.Core`); los filtros y el orden se recuerdan en el navegador.
-- **El mismo aspecto**: paleta de colores, tipografías e íconos, con tema oscuro y claro (el primer arranque sigue al sistema; el botón sol/luna lo alterna y la elección se recuerda).
-
-Diferencias con el APK:
-
-- En lugar de la pulsación larga, cada fila tiene un menú ⋮ con las acciones (marcar como vista o pendiente, eliminar).
-- El póster se sube desde un archivo de imagen (no hay cámara); se reduce antes de guardarlo igual que en el celular.
-- No hay actualización en tiempo real ni pull-to-refresh: se actualiza con el botón "Recargar" o recargando la página.
-
-Publicación opcional en Firebase Hosting (solo documentada, no se ha ejecutado):
+Puedes comprobar el entorno con:
 
 ```bash
-dotnet publish src/CineList.Web -c Release
-firebase init hosting   # carpeta pública: src/CineList.Web/bin/Release/net9.0/publish/wwwroot
-                        # app de una sola página: sí (reescribe todo a /index.html)
-firebase deploy
+dotnet --version
+dotnet workload list
+java -version
 ```
 
-También puedes ver los datos directamente en la [consola de Firebase](https://console.firebase.google.com/) → proyecto `cinelist-7a4de` → *Firestore Database* → colección `movies`.
+## Inicio rápido
 
-Nota sobre Windows: el proyecto incluye el destino `net9.0-windows10.0.19041.0`, que solo se compila desde Windows con Visual Studio 2022 (carga de trabajo ".NET MAUI"). No se ha probado; la versión probada es la de Android.
-
-## Compilar y ejecutar en Android (referencia)
-
-Requisitos: .NET 9 SDK con la carga de trabajo `maui-android`, JDK 17 y Android SDK.
+Clona el repositorio y entra a la carpeta:
 
 ```bash
-# Depuración
-dotnet build src/CineList -f net9.0-android \
-  -p:JavaSdkDirectory=/usr/lib/jvm/java-17-openjdk \
-  -p:AndroidSdkDirectory=$HOME/Android/Sdk
+git clone https://github.com/sebas-archive/Multiplatform-app-ListView.git
+cd Multiplatform-app-ListView
+```
 
-# Instalar y ejecutar en el emulador o dispositivo conectado
+### Web
+
+```bash
+dotnet run --project src/CineList.Web
+```
+
+Abre <http://localhost:5180>. Para detener el servidor, pulsa `Ctrl+C`.
+
+### Android
+
+Define las rutas de tu JDK y tu Android SDK (ajústalas a tu equipo):
+
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+export ANDROID_HOME=$HOME/Android/Sdk
+export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+```
+
+Enciende un emulador (o conecta un dispositivo con depuración USB):
+
+```bash
+emulator -list-avds
+emulator -avd Pixel_8 &
+```
+
+Compila, instala y ejecuta la app:
+
+```bash
 dotnet build src/CineList -f net9.0-android -t:Run \
-  -p:JavaSdkDirectory=/usr/lib/jvm/java-17-openjdk \
-  -p:AndroidSdkDirectory=$HOME/Android/Sdk
-
-# APK de publicación (queda en src/CineList/bin/Release/net9.0-android/publish/)
-dotnet publish src/CineList -f net9.0-android -c Release -p:AndroidPackageFormat=apk \
-  -p:JavaSdkDirectory=/usr/lib/jvm/java-17-openjdk \
-  -p:AndroidSdkDirectory=$HOME/Android/Sdk
+  -p:JavaSdkDirectory="$JAVA_HOME" \
+  -p:AndroidSdkDirectory="$ANDROID_HOME"
 ```
 
-El paquete es `com.cinelist.app`. El APK firmado resultante (`com.cinelist.app-Signed.apk`) se copia a `CineList.apk` en la raíz del repositorio; ese archivo no se versiona en git.
+Si ya tienes el APK compilado en la raíz, puedes instalarlo directamente:
 
-## Pruebas
+```bash
+adb install -r CineList.apk
+adb shell monkey -p com.cinelist.app -c android.intent.category.LAUNCHER 1
+```
+
+Para instalarlo en un celular, copia `CineList.apk` al teléfono (por USB, Drive, Telegram o correo), abre el archivo y permite **«Instalar apps desconocidas»** para la app con la que lo abras. El celular necesita internet porque los datos viven en Firestore.
+
+Si la app se ve con una versión vieja, desinstálala y vuelve a instalar:
+
+```bash
+adb uninstall com.cinelist.app
+```
+
+El paquete es `com.cinelist.app`. Para ver el celular en el PC durante la exposición puedes usar [scrcpy](https://github.com/Genymobile/scrcpy).
+
+### Pruebas
 
 ```bash
 dotnet test tests/CineList.Core.Tests
 ```
 
-## Configuración de Firebase
+Son **132 pruebas** de la lógica: filtros y orden, validación, mapeo de Firestore, repositorio, pósters y textos de la interfaz. No necesitan emulador ni conexión, porque el repositorio se prueba con un manejador HTTP simulado.
+
+Para compilar la solución completa:
+
+```bash
+dotnet build CineList.sln \
+  -p:JavaSdkDirectory="$JAVA_HOME" \
+  -p:AndroidSdkDirectory="$ANDROID_HOME"
+```
+
+En Linux, la app MAUI necesita esas dos rutas (o las variables de entorno equivalentes). Si solo te interesan la web o las pruebas, compila esos proyectos directamente.
+
+## Arquitectura
+
+La solución se divide en tres capas:
+
+- **`CineList.Core`:** modelo `Pelicula`, búsqueda, filtros, orden, validación, mapeo entre documentos de Firestore y objetos, repositorio REST y política de pósters. No referencia controles de interfaz, por eso se comparte y se prueba por separado.
+- **`CineList` (MAUI):** navegación por `Shell`, vistas XAML, view models con CommunityToolkit.Mvvm y servicios de tema, póster y transiciones.
+- **`CineList.Web` (Blazor):** componentes Razor, estado de la lista en servicios, persistencia en `localStorage` e interop con JavaScript para la reducción de imágenes y las transiciones.
+
+El flujo de datos es unidireccional:
+
+```text
+Vista (XAML / Razor) → ViewModel → Repositorio → Firestore REST
+```
+
+Decisiones técnicas que conviene conocer:
+
+- Se usa `CachingStrategy="RetainElement"` en el `ListView`. Con `RecycleElement`, al reconstruir los grupos por un cambio de orden o de filtros, Android dejaba una fila vacía y la última película desaparecía.
+- El póster se guarda como JPEG en base64 dentro del documento porque Firestore limita cada documento a ~1 MiB.
+- La web reduce la imagen en JavaScript con `createImageBitmap` y un lienzo antes de enviarla a Firestore. Blazor serializa los arreglos de bytes como base64 al cruzar a JavaScript, y el cliente los decodifica antes de usarlos como binario.
+
+## Firebase
 
 - Proyecto: `cinelist-7a4de`
-- Colección: `movies` (campos `title`, `director`, `genre`, `year`, `durationMin`, `synopsis`, `watched`, `rating`, `poster`, `createdAt`)
-- La configuración está en `src/CineList.Core/Firestore/FirebaseConfig.cs` (`ApiKey` y `ProjectId`). La API key web de Firebase no es secreta por sí sola; la protección real son las reglas de seguridad.
-- Reglas usadas: lectura y escritura abiertas únicamente sobre `movies/{id}`; cualquier otra colección responde 403.
+- Colección: `movies`
+- Campos: `title`, `director`, `genre`, `year`, `durationMin`, `synopsis`, `watched`, `rating`, `poster` y `createdAt`.
+- Configuración: `src/CineList.Core/Firestore/FirebaseConfig.cs` (`ApiKey` y `ProjectId`). La API key web de Firebase no es un secreto por sí sola; la protección real son las reglas de seguridad.
 
-```
+Reglas usadas en el proyecto de clase: lectura y escritura abiertas únicamente sobre `movies/{id}`; cualquier otra colección responde 403.
+
+```text
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -151,37 +257,53 @@ service cloud.firestore {
 }
 ```
 
-Advertencia: las reglas abiertas son aceptables solo para un proyecto de clase. Cualquier persona con la API key puede leer y modificar la colección `movies`. Para un uso real habría que activar autenticación (por ejemplo anónima) y restringir las reglas.
+> **Advertencia:** estas reglas son aceptables solo para un proyecto académico. Cualquier persona con la API key puede leer y modificar la colección `movies`. Para un uso real hay que activar autenticación (por ejemplo, anónima) y restringir las reglas por usuario.
 
-Los pósters se guardan como JPEG en base64 dentro del documento (lado mayor 600 px, calidad 70, máximo 900 000 caracteres de base64).
+Los pósters se guardan como JPEG en base64 dentro del documento (lado mayor 600 px, calidad 70, máximo 900 000 caracteres). Puedes ver los datos en la [consola de Firebase](https://console.firebase.google.com/) → proyecto `cinelist-7a4de` → *Firestore Database* → colección `movies`.
 
 ## Evidencias de la Guía 8
 
-| Evidencia | Archivo |
+| Requisito | Archivo |
 |---|---|
-| 1. Modelo | [`src/CineList.Core/Models/Pelicula.cs`](src/CineList.Core/Models/Pelicula.cs) |
-| 2. Celda personalizada (`ViewCell`) | [`src/CineList/Views/Celdas/PeliculaViewCell.cs`](src/CineList/Views/Celdas/PeliculaViewCell.cs) |
-| 3. Vista con el `ListView` | [`src/CineList/Views/PeliculasPage.xaml`](src/CineList/Views/PeliculasPage.xaml) |
-| 4. Evento de selección `OnPeliculaTapped` (`ItemTapped`) | [`src/CineList/Views/PeliculasPage.xaml.cs`](src/CineList/Views/PeliculasPage.xaml.cs#L147) |
+| Vista con el `ListView` | [`PeliculasPage.xaml`](src/CineList/Views/PeliculasPage.xaml#L141) |
+| Clase Model | [`Pelicula.cs`](src/CineList.Core/Models/Pelicula.cs) |
+| Clase ViewCell personalizada | [`PeliculaViewCell.cs`](src/CineList/Views/Celdas/PeliculaViewCell.cs) |
+| Evento de selección (`ItemTapped`) | [`OnPeliculaTapped`](src/CineList/Views/PeliculasPage.xaml.cs#L147) |
 
-## Funciones
+La vista se ve en ejecución; el modelo, la celda y el evento están en los archivos enlazados.
 
-- Lista de películas agrupada por género, con encabezados de grupo (solo con el orden Género; con los demás órdenes la lista es plana)
-- Búsqueda sin distinguir mayúsculas ni tildes (título y director)
-- Chips de filtro: todas, vistas y pendientes
-- Panel "Filtros y orden" (hoja inferior con el botón Filtros): filtro por género (selección múltiple), por década (Todas, Antes de 1980, 1980s, 1990s, 2000s, 2010s, 2020s) y por calificación mínima; orden por Género, Título, Año, Calificación o Recientes. El botón "Ver N películas" se actualiza en vivo y "Limpiar" restablece todo
-- Insignia con el número de filtros activos en el botón Filtros y línea "Activos:" con el resumen; si no hay resultados se ofrece "Limpiar filtros"
-- Los filtros y el orden se recuerdan entre aperturas de la app (el texto de búsqueda no)
-- Acciones contextuales con pulsación larga (marcar como vista o pendiente, eliminar)
-- Pull-to-refresh
-- Calificación con estrellas
-- Fotos de póster desde la cámara o la galería, reducidas antes de guardarse
-- Detalle, alta y edición de películas
-- Temas claro y oscuro: el primer arranque sigue al sistema; un botón permite alternarlo y la elección se recuerda
-- Animaciones breves (se omiten las decorativas si el sistema pide reducir movimiento):
-  - el póster vuela desde la lista hasta el detalle
-  - el detalle usa el póster desenfocado como fondo (el desenfoque requiere Android 12 o superior) con efecto parallax al desplazar
-  - las estrellas se llenan una a una
-  - al marcar una película como vista o pendiente la etiqueta gira, y al pasar a vista sale una pequeña ráfaga del color de acento
-  - el panel de filtros sube con rebote y los chips hacen un pequeño pop al seleccionarse
-- Estados de carga, vacío y error con "Reintentar" cuando no hay conexión
+## Publicación
+
+### Firebase Hosting
+
+La versión web se puede publicar en Firebase Hosting (estos comandos están documentados, no se han ejecutado en este repositorio):
+
+```bash
+dotnet publish src/CineList.Web -c Release
+firebase init hosting
+# Carpeta pública: src/CineList.Web/bin/Release/net9.0/publish/wwwroot
+# Aplicación de una sola página: sí (reescribe todo a /index.html)
+firebase deploy
+```
+
+### APK de Android
+
+```bash
+dotnet publish src/CineList -f net9.0-android -c Release -p:AndroidPackageFormat=apk \
+  -p:JavaSdkDirectory="$JAVA_HOME" \
+  -p:AndroidSdkDirectory="$ANDROID_HOME"
+```
+
+El APK firmado queda en `src/CineList/bin/Release/net9.0-android/publish/`. El archivo `CineList.apk` de la raíz es una copia para instalar rápido y **no se versiona** en Git.
+
+## Limitaciones y notas
+
+- La versión probada es **Android** (emulador y APK) y la **web**. Los destinos iOS y Windows están declarados en el proyecto, pero no se probaron; Windows requiere Visual Studio 2022 con la carga de trabajo de .NET MAUI.
+- La versión web no tiene actualización en tiempo real ni *pull-to-refresh*.
+- El desenfoque del póster en el detalle requiere Android 12 o superior.
+- Las reglas abiertas de Firestore son solo para el proyecto de clase.
+- El APK no se versiona: hay que compilarlo o copiarlo desde `publish/`.
+
+## Contexto académico
+
+Proyecto de la **Guía 8, «Trabajo con ListView»**, de la asignatura **Computación móvil**, Universidad Manuela Beltrán. El objetivo es construir una aplicación multiplataforma con un `ListView`, una clase Model, una clase ViewCell personalizada y un evento de selección.
