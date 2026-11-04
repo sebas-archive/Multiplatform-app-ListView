@@ -46,7 +46,10 @@ public class EstadoLista(IPeliculasRepository repositorio, AlmacenLocal almacen,
     /// <summary>True durante la entrada escalonada (luego se apaga para que agregar filas no la repita).</summary>
     public bool AnimarEntrada { get; private set; }
 
-    /// <summary>La página conecta aquí el desvanecimiento de la lista antes de reconstruirla.</summary>
+    /// <summary>True mientras la lista se desvanece antes de reconstruirse (la página pinta opacidad 0).</summary>
+    public bool Saliendo { get; private set; }
+
+    /// <summary>La página conecta aquí la espera del desvanecimiento (120 ms) antes de reconstruir.</summary>
     public Func<Task>? AnimarSalidaLista { get; set; }
 
     public bool Agrupado => Resultado.Agrupado;
@@ -178,27 +181,28 @@ public class EstadoLista(IPeliculasRepository repositorio, AlmacenLocal almacen,
     {
         if (_ocupado) return;
         _ocupado = true;
-        if (!_filtrosLeidos)
-        {
-            _filtrosLeidos = true;
-            var texto = Criterios.Texto;
-            Criterios = CriteriosFiltro.DesdeJson(await almacen.LeerAsync(ClaveFiltros)) with { Texto = texto };
-        }
-        if (mostrarEsqueleto)
-        {
-            Error = null; // al reintentar se oculta el error y se ve el esqueleto
-            Cargando = true;
-        }
-        else
-        {
-            Refrescando = true;
-        }
-        Notificar();
         // Con esqueleto se muestra al menos 600 ms: un reintento sin red falla al instante
         // y sin esta pausa no se notaría que se volvió a intentar
-        var pausaMinima = mostrarEsqueleto ? Task.Delay(600) : Task.CompletedTask;
+        var pausaMinima = Task.CompletedTask;
         try
         {
+            if (!_filtrosLeidos)
+            {
+                _filtrosLeidos = true;
+                var texto = Criterios.Texto;
+                Criterios = CriteriosFiltro.DesdeJson(await almacen.LeerAsync(ClaveFiltros)) with { Texto = texto };
+            }
+            if (mostrarEsqueleto)
+            {
+                Error = null; // al reintentar se oculta el error y se ve el esqueleto
+                Cargando = true;
+            }
+            else
+            {
+                Refrescando = true;
+            }
+            Notificar();
+            if (mostrarEsqueleto) pausaMinima = Task.Delay(600);
             var lista = await repositorio.ListarAsync();
             await pausaMinima;
             _todas = lista.ToList();
@@ -233,17 +237,22 @@ public class EstadoLista(IPeliculasRepository repositorio, AlmacenLocal almacen,
         var version = ++_versionSalida;
         if (AnimarSalidaLista is { } salida && Grupos.Count > 0)
         {
+            Saliendo = true;
+            Notificar();
             try { await salida(); }
             catch (Exception ex) { Console.WriteLine($"[EstadoLista] {ex.Message}"); }
-            if (version != _versionSalida) return; // otro cambio posterior ya reconstruyó
+            // Otro cambio posterior ya reconstruyó (y Aplicar apagó Saliendo); no se repite
+            if (version != _versionSalida) return;
         }
         Aplicar(animar: true);
     }
 
-    // Filtra, ordena y agrupa en memoria (sin red)
+    // Filtra, ordena y agrupa en memoria (sin red). Cualquier reconstrucción deja la lista visible:
+    // apaga Saliendo antes de notificar, aunque interrumpa un desvanecimiento en curso
     private void Aplicar(bool animar)
     {
         _versionSalida++;
+        Saliendo = false;
         Resultado = FiltroPeliculas.Aplicar(_todas, Criterios);
         Grupos = Resultado.Grupos.Where(g => g.Count > 0).ToList();
         if (animar) IniciarEntrada();

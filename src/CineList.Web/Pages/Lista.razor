@@ -115,7 +115,7 @@
     }
     else
     {
-        <div class="lista @(Estado.AnimarEntrada ? "entrando" : "") @(_saliendo ? "saliendo" : "")" @key="Estado.VersionEntrada">
+        <div class="lista @(Estado.AnimarEntrada ? "entrando" : "") @(Estado.Saliendo ? "saliendo" : "")" @key="Estado.VersionEntrada">
             @{ var indice = 0; }
             @foreach (var grupo in Estado.Grupos)
             {
@@ -169,7 +169,6 @@
     ];
 
     private string _texto = "";
-    private bool _saliendo;
     private Pelicula? _aEliminar;
 
     protected override async Task OnInitializedAsync()
@@ -197,17 +196,14 @@
     {
     }
 
-    // Antes de reconstruir por chip u orden, la lista se desvanece en 120 ms
+    // Antes de reconstruir por chip u orden, la lista se desvanece en 120 ms (EstadoLista.Saliendo
+    // pinta la opacidad; aquí solo se espera)
     private async Task AnimarSalidaAsync()
     {
         bool reducir;
         try { reducir = await JS.InvokeAsync<bool>("cinelist.reducirMovimiento"); }
         catch (JSException) { reducir = true; }
-        if (reducir) return;
-        _saliendo = true;
-        await InvokeAsync(StateHasChanged);
-        await Task.Delay(120);
-        _saliendo = false; // la reconstrucción que sigue ya pinta la lista nueva visible
+        if (!reducir) await Task.Delay(120);
     }
 
     private void PedirEliminar(Pelicula pelicula) => _aEliminar = pelicula;
