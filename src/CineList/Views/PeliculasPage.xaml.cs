@@ -143,11 +143,13 @@ public partial class PeliculasPage : ContentPage
         try
         {
             if (PeliculaViewCell.VistaDe(pelicula) is { } celda)
-                await Animaciones.Pulsar(celda);
-            await Shell.Current.GoToAsync($"detalle?id={Uri.EscapeDataString(pelicula.Id)}");
+                await Animaciones.Pulsar(celda, 0.96);
+            var vuelo = PrepararVueloPoster(pelicula); // con vuelo, el detalle hace su propia transición
+            await Shell.Current.GoToAsync($"detalle?id={Uri.EscapeDataString(pelicula.Id)}", animate: !vuelo);
         }
         catch (Exception ex)
         {
+            TransicionPoster.Descartar();
             Debug.WriteLine($"[PeliculasPage] {ex.Message}");
             await AvisarNavegacionAsync("No se pudo abrir el detalle");
         }
@@ -155,6 +157,16 @@ public partial class PeliculasPage : ContentPage
         {
             _navegando = false;
         }
+    }
+
+    // Guarda dónde está el póster tocado para que vuele al detalle; false si no hay vuelo
+    private static bool PrepararVueloPoster(Pelicula pelicula)
+    {
+        if (Animaciones.ReducirMovimiento || PeliculaViewCell.PosterDe(pelicula) is not { } poster
+            || Coordenadas.EnVentana(poster) is not { } origen)
+            return false;
+        TransicionPoster.Preparar(pelicula, origen);
+        return true;
     }
 
     private async void OnAgregar(object? sender, EventArgs e)

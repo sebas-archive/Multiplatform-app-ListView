@@ -148,6 +148,9 @@ public class PeliculaViewCell : ViewCell
     // Vista raíz de la celda que muestra esta película (o null si no está en pantalla)
     public static View? VistaDe(Pelicula pelicula) => CeldaDe(pelicula)?.View;
 
+    // Póster de la celda que muestra esta película (origen del póster que vuela al detalle)
+    public static PosterView? PosterDe(Pelicula pelicula) => CeldaDe(pelicula)?._poster;
+
     private static PeliculaViewCell? CeldaDe(Pelicula pelicula)
     {
         Celdas.RemoveAll(w => !w.TryGetTarget(out _));

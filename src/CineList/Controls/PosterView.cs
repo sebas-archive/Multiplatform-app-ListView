@@ -48,6 +48,15 @@ public class PosterView : Border
         SizeChanged += (_, _) => _iniciales.FontSize = Math.Max(12, Width * 0.32);
     }
 
+    // Degradado del póster generado para un título (también lo usa el fondo del detalle)
+    public static LinearGradientBrush Degradado(string titulo)
+    {
+        var (inicio, fin) = Paleta[PosterGenerado.IndicePaleta(titulo, Paleta.Length)];
+        return new LinearGradientBrush(
+            [new GradientStop(inicio, 0), new GradientStop(fin, 1)],
+            new Point(0.2, 0), new Point(0.8, 1));
+    }
+
     // Vuelve a pintar el póster; llamar tras cambiar la foto de la misma película
     public void Actualizar()
     {
@@ -57,10 +66,7 @@ public class PosterView : Border
         _imagen.IsVisible = foto is not null;
 
         var titulo = p?.Titulo ?? "";
-        var (inicio, fin) = Paleta[PosterGenerado.IndicePaleta(titulo, Paleta.Length)];
-        Background = new LinearGradientBrush(
-            [new GradientStop(inicio, 0), new GradientStop(fin, 1)],
-            new Point(0.2, 0), new Point(0.8, 1));
+        Background = Degradado(titulo);
         _iniciales.Text = foto is null ? PosterGenerado.Iniciales(titulo) : "";
     }
 }

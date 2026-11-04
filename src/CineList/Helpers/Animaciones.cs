@@ -1,6 +1,8 @@
+using Microsoft.Maui.Controls.Shapes;
+
 namespace CineList.Helpers;
 
-// Animaciones reutilizables (150-350 ms, Easing.CubicOut). Si el sistema pide reducir movimiento,
+// Animaciones reutilizables (150-450 ms, Easing.CubicOut). Si el sistema pide reducir movimiento,
 // las decorativas se saltan y los elementos quedan en su estado final.
 public static class Animaciones
 {
@@ -58,11 +60,11 @@ public static class Animaciones
         await Task.WhenAll(tareas);
     }
 
-    // Tap en celda: se encoge a 0.97 y vuelve
-    public static async Task Pulsar(VisualElement v)
+    // Tap en celda: se encoge (0.97 por defecto) y vuelve
+    public static async Task Pulsar(VisualElement v, double escala = 0.97)
     {
         if (ReducirMovimiento) return;
-        await v.ScaleTo(0.97, 80, Easing.CubicOut);
+        await v.ScaleTo(escala, 80, Easing.CubicOut);
         await v.ScaleTo(1, 100, Easing.CubicOut);
     }
 
@@ -90,6 +92,65 @@ public static class Animaciones
             poster.FadeTo(1, Larga, Easing.CubicOut),
             poster.ScaleTo(1, Larga, Easing.CubicOut),
             restoTarea);
+    }
+
+    private const string NombreVuelo = "VueloPoster";
+
+    // Póster que vuela de la lista al detalle. El superpuesto ya está dispuesto en el rectángulo
+    // destino; se lleva con traslación + escala (pivote arriba a la izquierda) desde el origen.
+    // Las esquinas redondeadas se compensan para verse siempre del mismo radio en pantalla.
+    public static Task VolarPoster(VisualElement superpuesto, Rect origen, Rect destino, uint ms = 420)
+    {
+        if (ReducirMovimiento || destino.Width <= 0 || destino.Height <= 0) return Task.CompletedTask;
+        var tcs = new TaskCompletionSource();
+        var escalaX = origen.Width / destino.Width;
+        var escalaY = origen.Height / destino.Height;
+        var dx = origen.X - destino.X;
+        var dy = origen.Y - destino.Y;
+        var esquinas = (superpuesto as Border)?.StrokeShape as RoundRectangle;
+        var radio = esquinas?.CornerRadius.TopLeft ?? 0;
+
+        void Paso(double t)
+        {
+            var sx = escalaX + (1 - escalaX) * t;
+            var sy = escalaY + (1 - escalaY) * t;
+            superpuesto.ScaleX = sx;
+            superpuesto.ScaleY = sy;
+            superpuesto.TranslationX = dx * (1 - t);
+            superpuesto.TranslationY = dy * (1 - t);
+            if (esquinas is not null) esquinas.CornerRadius = radio / Math.Max(Math.Min(sx, sy), 0.05);
+        }
+
+        superpuesto.AnchorX = 0;
+        superpuesto.AnchorY = 0;
+        Paso(0);
+        new Animation(Paso, 0, 1, Easing.CubicOut).Commit(superpuesto, NombreVuelo, 16, ms,
+            finished: (_, _) =>
+            {
+                Paso(1);
+                if (esquinas is not null) esquinas.CornerRadius = radio;
+                tcs.TrySetResult();
+            });
+        return tcs.Task;
+    }
+
+    // Corta el vuelo en curso (la tarea de VolarPoster termina en seguida)
+    public static void CancelarVuelo(VisualElement superpuesto) => superpuesto.AbortAnimation(NombreVuelo);
+
+    // Aparece desde escala 0 con "pop" (0 -> 1.15 -> 1)
+    public static async Task PopEntrada(VisualElement v)
+    {
+        try
+        {
+            if (ReducirMovimiento) return;
+            v.Scale = 0;
+            await v.ScaleTo(1.15, 150, Easing.CubicOut);
+            await v.ScaleTo(1, 120, Easing.CubicOut);
+        }
+        finally
+        {
+            v.Scale = 1;
+        }
     }
 
     // Eliminar: se desvanece y colapsa su altura

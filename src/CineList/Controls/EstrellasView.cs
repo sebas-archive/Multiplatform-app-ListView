@@ -74,6 +74,41 @@ public class EstrellasView : HorizontalStackLayout
         await Animaciones.Pop(estrella);
     }
 
+    // Deja las estrellas en escala 0 antes de que el bloque aparezca (luego AnimarLlenado)
+    public void PrepararLlenado()
+    {
+        if (Animaciones.ReducirMovimiento) return;
+        foreach (var e in _estrellas) e.Scale = 0;
+    }
+
+    // Estado final sin animación (por si la entrada se interrumpió)
+    public void MostrarLlenas()
+    {
+        foreach (var e in _estrellas) e.Scale = 1;
+    }
+
+    // Las estrellas aparecen una a una (0 -> 1.25 -> 1), separadas retrasoMs
+    public async Task AnimarLlenado(uint retrasoMs = 60)
+    {
+        try
+        {
+            if (Animaciones.ReducirMovimiento) return;
+            foreach (var e in _estrellas) e.Scale = 0;
+            await Task.WhenAll(_estrellas.Select((e, i) => AparecerEstrella(e, (int)(i * retrasoMs))));
+        }
+        finally
+        {
+            MostrarLlenas(); // pase lo que pase, quedan visibles
+        }
+    }
+
+    private static async Task AparecerEstrella(Label estrella, int retraso)
+    {
+        await Task.Delay(retraso);
+        await estrella.ScaleTo(1.25, 150, Easing.CubicOut);
+        await estrella.ScaleTo(1, 120, Easing.CubicOut);
+    }
+
     private void Pintar()
     {
         for (var i = 0; i < _estrellas.Length; i++)
