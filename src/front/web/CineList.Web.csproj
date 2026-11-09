@@ -12,7 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CineList.Core\CineList.Core.csproj" />
+    <ProjectReference Include="..\..\back\core\CineList.Core.csproj" />
   </ItemGroup>
 
 </Project>

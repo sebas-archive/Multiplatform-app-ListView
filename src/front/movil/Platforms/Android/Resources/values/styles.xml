@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Material 1.12 construye el BottomNavigationView del Shell con el atributo
+      bottomNavigationStyle (Widget.MaterialComponents), que exige un textAppearance
+      resoluble. En Android 15 esa referencia de tema no resuelve y la actividad se cierra.
+      El mismo control que MAUI ya asigna en bottomNavigationViewStyle no hace esa exigencia.
+    -->
+    <style name="Maui.MainTheme" parent="Maui.MainTheme.Base">
+        <item name="bottomNavigationStyle">@style/Widget.Design.BottomNavigationView</item>
+    </style>
+</resources>

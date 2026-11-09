@@ -95,30 +95,40 @@ Ambos leen y escriben la misma colección de Firestore, así que un cambio hecho
 
 ## Estructura del repositorio
 
+El código se separa en **front** (lo que ve el usuario) y **back** (la lógica y los datos que comparten las dos interfaces):
+
 ```text
-CineList.sln                 Solución con los cuatro proyectos
-CineList.apk                 APK de ejemplo (no se versiona)
+CineList.sln                  Solución con los cuatro proyectos
 src/
-  CineList/                  App .NET MAUI para Android
-    Views/                   Páginas y celdas (PeliculasPage, PeliculaViewCell)
-    ViewModels/              Estado y comandos de cada pantalla
-    Services/                Tema, póster, transiciones y barra de estado
-    Controls/                Controles reutilizables (chips, estrellas, póster)
-  CineList.Core/             Lógica compartida, sin dependencias de interfaz
-    Models/                  Pelicula
-    Lista/                   Búsqueda, filtros, orden y agrupación
-    Firestore/               Mapeo, repositorio y configuración
-    Formulario/              Validación y datos del formulario
-    Poster/                  Política de tamaño y compresión
-  CineList.Web/              Versión Blazor WebAssembly
-    Pages/                   Lista, detalle y formulario
-    Components/              Filas, filtros, pósters y diálogos
-    Services/                Estado de la lista, tema y almacenamiento local
+  front/                      FRONT: todo lo que el usuario ve y toca
+    movil/                    App .NET MAUI para Android
+      Views/                  Páginas y celdas (PeliculasPage, PeliculaViewCell)
+      ViewModels/             Estado y comandos de cada pantalla
+      Controls/               Controles reutilizables (chips, estrellas, póster)
+      Services/               Tema, póster, transiciones y barra de estado
+      Helpers/                Animaciones, iconos y mensajes de error
+      Platforms/, Resources/  Código y recursos propios de Android
+    web/                      Versión Blazor WebAssembly
+      Pages/                  Lista, detalle y formulario
+      Components/             Filas, filtros, pósters y diálogos
+      Services/               Estado de la lista, tema y almacenamiento local
+      wwwroot/                HTML, CSS, fuentes y JavaScript
+  back/                       BACK: lógica y datos, sin nada de interfaz
+    core/
+      Models/                 Pelicula (el Model de la guía)
+      Lista/                  Búsqueda, filtros, orden y agrupación
+      Firestore/              Mapeo, repositorio y configuración de Firebase
+      Formulario/             Validación y datos del formulario
+      Poster/                 Política de tamaño y compresión
 tests/
-  CineList.Core.Tests/       132 pruebas con xUnit
+  CineList.Core.Tests/        132 pruebas con xUnit sobre el back
+tools/                        Scripts de apoyo (subconjunto de iconos)
+docs/, entrega/               Documentos y archivos de entrega
 ```
 
-`CineList.sln` es el archivo de solución: agrupa los cuatro proyectos para abrirlos juntos en Visual Studio, Rider o VS Code y compilarlos o probarlos desde la raíz. También puedes consultar sus proyectos con `dotnet sln list`.
+Regla simple: **`front` depende de `back`, nunca al revés.** Por eso el `back` se prueba solo y se reutiliza en móvil y web.
+
+`CineList.sln` agrupa los proyectos para abrirlos juntos en Visual Studio, Rider o VS Code. Puedes listarlos con `dotnet sln list`.
 
 ## Requisitos
 
@@ -152,7 +162,7 @@ cd Multiplatform-app-ListView
 ### Web
 
 ```bash
-dotnet run --project src/CineList.Web
+dotnet run --project src/front/web
 ```
 
 Abre <http://localhost:5180>. Para detener el servidor, pulsa `Ctrl+C`.
@@ -177,7 +187,7 @@ emulator -avd Pixel_8 &
 Compila, instala y ejecuta la app:
 
 ```bash
-dotnet build src/CineList -f net9.0-android -t:Run \
+dotnet build src/front/movil -f net9.0-android -t:Run \
   -p:JavaSdkDirectory="$JAVA_HOME" \
   -p:AndroidSdkDirectory="$ANDROID_HOME"
 ```
@@ -221,9 +231,9 @@ En Linux, la app MAUI necesita esas dos rutas (o las variables de entorno equiva
 
 La solución se divide en tres capas:
 
-- **`CineList.Core`:** modelo `Pelicula`, búsqueda, filtros, orden, validación, mapeo entre documentos de Firestore y objetos, repositorio REST y política de pósters. No referencia controles de interfaz, por eso se comparte y se prueba por separado.
-- **`CineList` (MAUI):** navegación por `Shell`, vistas XAML, view models con CommunityToolkit.Mvvm y servicios de tema, póster y transiciones.
-- **`CineList.Web` (Blazor):** componentes Razor, estado de la lista en servicios, persistencia en `localStorage` e interop con JavaScript para la reducción de imágenes y las transiciones.
+- **`back/core` (`CineList.Core`):** modelo `Pelicula`, búsqueda, filtros, orden, validación, mapeo entre documentos de Firestore y objetos, repositorio REST y política de pósters. No referencia controles de interfaz, por eso se comparte y se prueba por separado.
+- **`front/movil` (`CineList`, MAUI):** navegación por `Shell`, vistas XAML, view models con CommunityToolkit.Mvvm y servicios de tema, póster y transiciones.
+- **`front/web` (`CineList.Web`, Blazor):** componentes Razor, estado de la lista en servicios, persistencia en `localStorage` e interop con JavaScript para la reducción de imágenes y las transiciones.
 
 El flujo de datos es unidireccional:
 
@@ -242,7 +252,7 @@ Decisiones técnicas que conviene conocer:
 - Proyecto: `cinelist-7a4de`
 - Colección: `movies`
 - Campos: `title`, `director`, `genre`, `year`, `durationMin`, `synopsis`, `watched`, `rating`, `poster` y `createdAt`.
-- Configuración: `src/CineList.Core/Firestore/FirebaseConfig.cs` (`ApiKey` y `ProjectId`). La API key web de Firebase no es un secreto por sí sola; la protección real son las reglas de seguridad.
+- Configuración: `src/back/core/Firestore/FirebaseConfig.cs` (`ApiKey` y `ProjectId`). La API key web de Firebase no es un secreto por sí sola; la protección real son las reglas de seguridad.
 
 Reglas usadas en el proyecto de clase: lectura y escritura abiertas únicamente sobre `movies/{id}`; cualquier otra colección responde 403.
 
@@ -265,12 +275,43 @@ Los pósters se guardan como JPEG en base64 dentro del documento (lado mayor 600
 
 | Requisito | Archivo |
 |---|---|
-| Vista con el `ListView` | [`PeliculasPage.xaml`](src/CineList/Views/PeliculasPage.xaml#L141) |
-| Clase Model | [`Pelicula.cs`](src/CineList.Core/Models/Pelicula.cs) |
-| Clase ViewCell personalizada | [`PeliculaViewCell.cs`](src/CineList/Views/Celdas/PeliculaViewCell.cs) |
-| Evento de selección (`ItemTapped`) | [`OnPeliculaTapped`](src/CineList/Views/PeliculasPage.xaml.cs#L147) |
+| Vista con el `ListView` | [`PeliculasPage.xaml`](src/front/movil/Views/PeliculasPage.xaml#L141) |
+| Clase Model | [`Pelicula.cs`](src/back/core/Models/Pelicula.cs) |
+| Clase ViewCell personalizada | [`PeliculaViewCell.cs`](src/front/movil/Views/Celdas/PeliculaViewCell.cs) |
+| Evento de selección (`ItemTapped`) | [`OnPeliculaTapped`](src/front/movil/Views/PeliculasPage.xaml.cs#L137) |
 
-La vista se ve en ejecución; el modelo, la celda y el evento están en los archivos enlazados.
+### Cómo explicarlo, paso a paso
+
+La guía pide cuatro piezas. Este es el recorrido en el orden en que conviene mostrarlas.
+
+**1. El Model: `Pelicula`.** Es la clase que representa un registro: `Titulo`, `Director`, `Genero`, `Anio`, `DuracionMin`, `Sinopsis`, `Vista`, `Calificacion` y el póster. Solo contiene datos, nada de interfaz, y por eso vive en el `back`.
+
+**2. El `ListView`.** Está en `PeliculasPage.xaml` y las propiedades clave son:
+
+- `ItemsSource="{Binding Grupos}"`: recibe los datos por *data binding* desde el `PeliculasViewModel`.
+- `ItemTemplate="{DataTemplate celdas:PeliculaViewCell}"`: dibuja cada fila con la celda personalizada.
+- `IsGroupingEnabled="True"`: agrupa las películas por género, con un encabezado por grupo (`GroupHeaderTemplate`).
+- `IsPullToRefreshEnabled="True"`: permite arrastrar hacia abajo para refrescar.
+- `ListView.Footer`: pie de lista.
+
+Esto cubre los componentes del marco conceptual de la guía: encabezados y pies de página, grupos y celdas.
+
+**3. El `ViewCell`: `PeliculaViewCell`.** Hereda de `ViewCell` y define cómo se ve cada fila: póster, título, director/año/duración, estrellas y la etiqueta VISTA o PENDIENTE. Su `BindingContext` es una `Pelicula`, así que cada fila se llena con los datos de su película. Está construida en C#; la guía permite hacerlo en XAML o en código.
+
+**4. El evento de selección: `OnPeliculaTapped`.** El `ListView` dispara `ItemTapped` al tocar una fila. El manejador toma la película con `e.Item` y navega al detalle pasando su `id`. Además limpia `SelectedItem`, ignora toques dobles con la bandera `_navegando` y anima el póster antes de navegar.
+
+### Preguntas que pueden hacer
+
+- **¿Por qué `SelectionMode="None"`?** El toque se maneja con `ItemTapped`, sin dejar la fila marcada.
+- **¿Por qué `CachingStrategy="RetainElement"`?** Con `RecycleElement`, al reconstruir los grupos Android dejaba una fila vacía y la última película desaparecía.
+- **¿Dónde está MVVM?** `PeliculasViewModel` expone `Grupos` y el `ListView` lo consume por binding; la vista no toca el repositorio directamente.
+- **¿Por qué separar `front` y `back`?** Así la lógica (filtros, validación, Firestore) se escribe una vez y la usan la app móvil y la web.
+
+### Pendiente de la guía
+
+- Capturas de pantalla: app funcionando, Model, ViewCell y código del evento.
+- Exposición en inglés y video de soporte.
+- Cuadro comparativo del trabajo autónomo (tipos de listas y *drag and drop* entre dos listas).
 
 ## Publicación
 
@@ -279,9 +320,9 @@ La vista se ve en ejecución; el modelo, la celda y el evento están en los arch
 La versión web se puede publicar en Firebase Hosting (estos comandos están documentados, no se han ejecutado en este repositorio):
 
 ```bash
-dotnet publish src/CineList.Web -c Release
+dotnet publish src/front/web -c Release
 firebase init hosting
-# Carpeta pública: src/CineList.Web/bin/Release/net9.0/publish/wwwroot
+# Carpeta pública: src/front/web/bin/Release/net9.0/publish/wwwroot
 # Aplicación de una sola página: sí (reescribe todo a /index.html)
 firebase deploy
 ```
@@ -289,12 +330,12 @@ firebase deploy
 ### APK de Android
 
 ```bash
-dotnet publish src/CineList -f net9.0-android -c Release -p:AndroidPackageFormat=apk \
+dotnet publish src/front/movil -f net9.0-android -c Release -p:AndroidPackageFormat=apk \
   -p:JavaSdkDirectory="$JAVA_HOME" \
   -p:AndroidSdkDirectory="$ANDROID_HOME"
 ```
 
-El APK firmado queda en `src/CineList/bin/Release/net9.0-android/publish/`. El archivo `CineList.apk` de la raíz es una copia para instalar rápido y **no se versiona** en Git.
+El APK firmado queda en `src/front/movil/bin/Release/net9.0-android/publish/`. El archivo `CineList.apk` de la raíz es una copia para instalar rápido y **no se versiona** en Git.
 
 ## Limitaciones y notas
 

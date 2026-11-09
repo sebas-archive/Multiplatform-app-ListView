@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\CineList.Core\CineList.Core.csproj" />
+    <ProjectReference Include="..\..\src\back\core\CineList.Core.csproj" />
   </ItemGroup>
 
 </Project>

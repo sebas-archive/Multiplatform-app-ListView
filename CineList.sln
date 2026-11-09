@@ -5,13 +5,13 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CineList.Core", "src\CineList.Core\CineList.Core.csproj", "{EF23B648-31C5-410B-B39A-FCFB76449446}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CineList.Core", "src\back\core\CineList.Core.csproj", "{EF23B648-31C5-410B-B39A-FCFB76449446}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CineList.Core.Tests", "tests\CineList.Core.Tests\CineList.Core.Tests.csproj", "{62525100-DA4B-418E-99A0-B4F51B5B11BC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CineList", "src\CineList\CineList.csproj", "{E7D44103-1018-46DA-AB0F-44F3900DB310}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CineList", "src\front\movil\CineList.csproj", "{E7D44103-1018-46DA-AB0F-44F3900DB310}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CineList.Web", "src\CineList.Web\CineList.Web.csproj", "{EA0BCA1D-5B19-4E24-9454-7F253CE8F4B7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CineList.Web", "src\front\web\CineList.Web.csproj", "{EA0BCA1D-5B19-4E24-9454-7F253CE8F4B7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

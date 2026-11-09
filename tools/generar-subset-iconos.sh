@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Regenera los subconjuntos de Material Symbols Rounded (FILL 0 y FILL 1) a partir de los
-# glifos usados en src/CineList/Helpers/Iconos.cs. Ejecutar al agregar un glifo nuevo.
+# glifos usados en src/front/movil/Helpers/Iconos.cs. Ejecutar al agregar un glifo nuevo.
 # Fuente: https://github.com/google/material-design-icons/tree/master/variablefont (Apache 2.0)
 set -euo pipefail
 RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
-FUENTES="$RAIZ/src/CineList/Resources/Fonts"
-ICONOS="$RAIZ/src/CineList/Helpers/Iconos.cs"
+FUENTES="$RAIZ/src/front/movil/Resources/Fonts"
+ICONOS="$RAIZ/src/front/movil/Helpers/Iconos.cs"
 TMP="$(mktemp -d)"
 URL="https://github.com/google/material-design-icons/raw/master/variablefont/MaterialSymbolsRounded%5BFILL,GRAD,opsz,wght%5D"
 curl -sLf -o "$TMP/ms.ttf" "$URL.ttf"

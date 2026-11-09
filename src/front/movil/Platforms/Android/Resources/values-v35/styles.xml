@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- API 35+: conserva la exclusión de edge-to-edge de MAUI y el arreglo de la barra del Shell. -->
+    <style name="Maui.MainTheme" parent="Maui.MainTheme.Base">
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">?attr/maui_edgetoedge_optout</item>
+        <item name="bottomNavigationStyle">@style/Widget.Design.BottomNavigationView</item>
+    </style>
+</resources>
